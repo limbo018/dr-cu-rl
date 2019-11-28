@@ -5,7 +5,6 @@ project(dr-cu-rl
         )
 set(CMAKE_CXX_STANDARD 17)
 
-#add_executable(gym_client gym_client.cpp communicator.cpp)
 add_executable(dr-cu-rl main.cpp Envs.cpp)
 set(LIB_DIR ${CMAKE_CURRENT_LIST_DIR}/lib)
 set(CPPZMQ_DIR ${LIB_DIR}/cppzmq)
