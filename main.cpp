@@ -10,7 +10,6 @@
 
 #include <cpprl/cpprl.h>
 
-//#include "communicator.h"
 #include "requests.h"
 #include "Envs.h"
 
@@ -38,9 +37,7 @@ const bool use_lr_decay = false;
 const float value_loss_coef = 0.5;
 
 // Environment hyperparameters
-const std::string env_name = "LunarLander-v2";
 const int num_envs = 1;
-const float render_reward_threshold = 160;
 
 // Model hyperparameters
 const int hidden_size = 64;
@@ -113,7 +110,7 @@ int main(int argc, char *argv[]) {
     Policy policy(nullptr);
     if (env_info->observation_space_shape.size() == 1) {
         // With observation normalization
-        policy = Policy(space, base, true);
+        policy = Policy(space, base, false);
     } else {
         // Without observation normalization
         policy = Policy(space, base, true);
@@ -136,12 +133,11 @@ int main(int argc, char *argv[]) {
                                      0.5,
                                      kl_target);
     }
-
     storage.set_first_observation(observation);
 
     std::vector<float> running_rewards(num_envs);
     int episode_count = 0;
-    bool render = false;
+
     std::vector<float> reward_history(reward_average_window_size);
     RunningMeanStd returns_rms(1);
     auto returns = torch::zeros({num_envs});

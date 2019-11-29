@@ -293,7 +293,7 @@ Drcu::Res Drcu::step(float rank_score) {
         res.feature.emplace_back(0);
         res.feature.emplace_back(0);
         // route
-        res.reward = - _router.route(_rank_score) + 296590;
+        res.reward = - _router.route(_rank_score);
 //        std::cout << "Total Score: " << res.reward << std::endl;
     }
 
