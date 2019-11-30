@@ -12,7 +12,7 @@ public:
         vector<float> reward;
     };
     Res reset();
-    vector<int> reset(int env_idx);
+    vector<float> reset(int env_idx);
     Res step(const std::vector<std::vector<float >>& actions);
     Res init(int argc, char* short_format_argv[]);
 private:

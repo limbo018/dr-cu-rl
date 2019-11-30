@@ -12,7 +12,7 @@ Envs::Res Envs::reset() {
     }
     return res;
 }
-vector<int> Envs::reset(int env_idx) {
+vector<float> Envs::reset(int env_idx) {
      _envs[env_idx].reset();
     return _envs[env_idx].get_the_1st_observation();
 }

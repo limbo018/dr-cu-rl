@@ -22,9 +22,7 @@ void Drcu::reset() {
     init(_argc, _short_format_argv);
 }
 
-int Drcu::step() {
-    return _router.step();
-}
+int Drcu::step() { return _router.step(); }
 
 int Drcu::feed_argv(int argc, char *short_format_argv[]) {
     _long_format_argv[0] = short_format_argv[0];
@@ -80,9 +78,9 @@ int Drcu::feed_argv(int argc, char *short_format_argv[]) {
                 ("dbInitHistUsageForPinAccess", value<double>());
         // clang-format on
         store(command_line_parser(13, argv)
-                      .options(desc)
-                      .style(command_line_style::unix_style | command_line_style::allow_long_disguise)
-                      .run(),
+                  .options(desc)
+                  .style(command_line_style::unix_style | command_line_style::allow_long_disguise)
+                  .run(),
               _vm);
         notify(_vm);
         if (_vm.count("help")) {
@@ -121,7 +119,7 @@ void Drcu::convert_argv_format(char *short_format_argv[]) {
     std::string year = short_format_argv[1];
     std::string test_id = short_format_argv[2];
     std::string input_file_name =
-            "../dr-cu/toys/ispd" + year + "_test" + test_id + "/ispd" + year + "_test" + test_id + ".input";
+        "../dr-cu/toys/ispd" + year + "_test" + test_id + "/ispd" + year + "_test" + test_id + ".input";
 
     _long_format_argv[0] = short_format_argv[0];
     _long_format_argv[1] = "-lef";
@@ -139,7 +137,7 @@ void Drcu::convert_argv_format(char *short_format_argv[]) {
 }
 
 void Drcu::init_ispd_flow() {
-//    db::setting.makeItSilent();
+    //    db::setting.makeItSilent();
 
     Rsyn::Session session;
 
@@ -155,7 +153,7 @@ void Drcu::init_ispd_flow() {
     // multi_net
     if (_vm.count("multiNetVerbose")) {
         db::setting.multiNetVerbose =
-                db::VerboseLevelT::_from_string(_vm.at("multiNetVerbose").as<std::string>().c_str());
+            db::VerboseLevelT::_from_string(_vm.at("multiNetVerbose").as<std::string>().c_str());
     }
     if (_vm.count("multiNetScheduleSortAll")) {
         db::setting.multiNetScheduleSortAll = _vm.at("multiNetScheduleSortAll").as<bool>();
@@ -217,9 +215,9 @@ void Drcu::init_ispd_flow() {
     // Read benchmarks
     Rsyn::ISPD2018Reader reader;
     const Rsyn::Json params = {
-            {"lefFile",   lefFile},
-            {"defFile",   defFile},
-            {"guideFile", guideFile},
+        {"lefFile", lefFile},
+        {"defFile", defFile},
+        {"guideFile", guideFile},
     };
 
     if (db::setting.dbVerbose >= +db::VerboseLevelT::HIGH) {
@@ -246,7 +244,7 @@ void Drcu::test(int argc, char *short_format_argv[]) {
     while (!res.done) {
         res = step(res.feature.at(0));
     }
-//    route();
+    //    route();
 
     reset();
 }
@@ -270,21 +268,38 @@ void Drcu::close() {
 int Drcu::prepare() {
     int res = 0;
     res = _router.prepare();
-    if (res)
-        return res;
+    if (res) return res;
 
     _features = _router.get_nets_feature();
+
+    std::array<int, 2> min{_features.at(0).at(0), _features.at(0).at(1)};
+    std::array<int, 2> max{_features.at(0).at(0), _features.at(0).at(1)};
+    for (auto feature : _features) {
+        for (int i = 0; i < 2; ++i) {
+            if (max.at(i) < feature.at(i)) max.at(i) = feature.at(i);
+            if (min.at(i) > feature.at(i)) min.at(i) = feature.at(i);
+        }
+    }
+    _features_norm.resize(_features.size());
+    for (int i = 0; i < _features.size(); ++i) {
+        _features_norm.at(i).resize(2);
+        for (int j = 0; j < 2; ++j) {
+            float val = _features.at(i).at(j);
+            val = (val - min.at(j)) / static_cast<float>(max.at(j) - min.at(j));
+            val = val * 2 - 1;
+            _features_norm.at(i).at(j) = val;
+        }
+    }
+
     return 0;
 }
 
 Drcu::Res Drcu::step(float rank_score) {
     Res res;
-
-//    rank_score = rand() % 10;
-    if (_step_cnt < _features.size()) {
+    if (_step_cnt < _features_norm.size()) {
         res.done = false;
         _rank_score.emplace_back(rank_score);
-        res.feature.assign(_features.at(_step_cnt).begin(), _features.at(_step_cnt).end());
+        res.feature.assign(_features_norm.at(_step_cnt).begin(), _features_norm.at(_step_cnt).end());
         res.reward = 0;
         _step_cnt++;
     } else {
@@ -293,15 +308,14 @@ Drcu::Res Drcu::step(float rank_score) {
         res.feature.emplace_back(0);
         res.feature.emplace_back(0);
         // route
-        res.reward = - _router.route(_rank_score);
-//        std::cout << "Total Score: " << res.reward << std::endl;
+        res.reward = -_router.route(_rank_score);
+        //        std::cout << "Total Score: " << res.reward << std::endl;
     }
 
     return res;
 }
 
-vector<int> Drcu::get_the_1st_observation() {
+vector<float> Drcu::get_the_1st_observation() {
     _step_cnt++;
-    return vector<int>(_features.at(0));
+    return vector<float>(_features_norm.at(0));
 }
-
