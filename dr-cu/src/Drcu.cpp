@@ -285,7 +285,9 @@ Drcu::Res Drcu::step(float rank_score) {
         res.done = false;
         _rank_score.emplace_back(rank_score);
         res.feature.assign(_features.at(_step_cnt).begin(), _features.at(_step_cnt).end());
-        res.reward = 0;
+//        res.reward = 0;
+        res.reward = _features.at(_step_cnt - 1).at(0) - rank_score;
+        res.reward = - res.reward * res.reward;
         _step_cnt++;
     } else {
         res.done = true;

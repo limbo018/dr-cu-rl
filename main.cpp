@@ -154,7 +154,6 @@ int main(int argc, char *argv[]) {
                         storage.get_observations()[step], storage.get_hidden_states()[step], storage.get_masks()[step]);
             }
             auto actions_tensor = act_result[1].cpu().to(torch::kFloat);
-//            auto actions_tensor = act_result[1].to(device).to(torch::kFloat);
             float *actions_array = actions_tensor.data_ptr<float>();
             std::vector<std::vector<float>> actions(num_envs);
             for (int i = 0; i < num_envs; ++i) {
