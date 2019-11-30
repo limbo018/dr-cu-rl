@@ -279,6 +279,8 @@ int main(int argc, char *argv[]) {
                 average_reward /=
                         episode_count < reward_average_window_size ? episode_count : reward_average_window_size;
                 spdlog::info("average_reward Reward: {}", average_reward);
+                torch::save(base, "base_apprach.pt");
+                torch::save(policy, "policy_apprach.pt");
             }
         }
     }

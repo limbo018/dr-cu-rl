@@ -301,6 +301,9 @@ Drcu::Res Drcu::step(float rank_score) {
         _rank_score.emplace_back(rank_score);
         res.feature.assign(_features_norm.at(_step_cnt).begin(), _features_norm.at(_step_cnt).end());
         res.reward = 0;
+        float reward = (_features_norm.at(_step_cnt - 1).at(0) - rank_score);
+        reward = - reward * reward;
+        res.reward = reward;
         _step_cnt++;
     } else {
         res.done = true;
@@ -308,8 +311,15 @@ Drcu::Res Drcu::step(float rank_score) {
         res.feature.emplace_back(0);
         res.feature.emplace_back(0);
         // route
-        res.reward = -_router.route(_rank_score);
-        //        std::cout << "Total Score: " << res.reward << std::endl;
+//        res.reward = -_router.route(_rank_score);
+//        float reward = (_features_norm.at(_step_cnt - 1).at(0) - rank_score);
+//        reward = - reward * reward;
+//        res.reward = reward;
+        for(int i = 0; i < _features_norm.size(); ++i){
+            float reward = _features_norm.at(i).at(0) - _rank_score.at(i);
+            reward = - reward * reward;
+            res.reward += reward;
+        }
     }
 
     return res;
