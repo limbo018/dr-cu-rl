@@ -10,10 +10,8 @@
 
 #include <cpprl/cpprl.h>
 
-#include "requests.h"
 #include "Envs.h"
 
-using namespace gym_client;
 using namespace cpprl;
 
 // Algorithm hyperparameters
@@ -42,7 +40,15 @@ const int num_envs = 1;
 // Model hyperparameters
 const int hidden_size = 64;
 const bool recurrent = false;
-const bool use_cuda = true;
+const bool use_cuda = false;
+
+struct InfoResponse
+{
+  std::string action_space_type;
+  std::vector<int64_t> action_space_shape;
+  std::string observation_space_type;
+  std::vector<int64_t> observation_space_shape;
+};
 
 std::vector<float> flatten_vector(std::vector<float> const &input) { return input; }
 
