@@ -8,15 +8,14 @@ class Drcu {
 public:
     void init(int argc, char* short_format_argv[]);
     void reset();
-    int step();
     void test(int argc, char* short_format_argv[]);
     struct Res{
-        vector<float> feature;
+        vector<vector<float>> feature;
         bool done = false;
-        double reward = 0;
+        float reward = 0;
     };
-    Res step(float rank_score);
-    vector<float> get_the_1st_observation();
+    Res step(const vector<float>& rank_score);
+    vector<vector<float>> get_the_1st_observation();
 private:
     std::string _long_format_argv[13] = {"argv[0]",
                                         "-lef",
@@ -40,6 +39,7 @@ private:
     int _argc{0};
     char** _short_format_argv{nullptr};
     int _step_cnt{0};
+    const int IRR_LIMIT{4};
 
 
     int feed_argv(int argc, char* short_format_argv[]);

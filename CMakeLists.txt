@@ -13,8 +13,8 @@ set(SPDLOG_DIR ${LIB_DIR}/spdlog)
 set(ZMQ_DIR ${LIB_DIR}/libzmq)
 
 # Torch
-# set(Torch_DIR /home/qut/Repo/libtorch_precxx11/libtorch/share/cmake/Torch)
-set(Torch_DIR /home/quto/Repo/libtorch/share/cmake/Torch)
+set(Torch_DIR /home/qut/Repo/libtorch_precxx11/libtorch/share/cmake/Torch)
+# set(Torch_DIR /home/quto/Repo/libtorch/share/cmake/Torch)
 if (NOT TORCH_FOUND)
     find_package(Torch REQUIRED)
     if (TORCH_CXX_FLAGS)

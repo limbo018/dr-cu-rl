@@ -88,7 +88,10 @@ void Router::run() {
 vector<int> Router::getNetsToRoute() {
     vector<int> netsToRoute;
     if (iter == 0) {
-        for (int i = 0; i < database.nets.size(); i++) {
+        auto nets_size = database.nets.size();
+//        if(nets_size > 1000)
+//            nets_size = 1000;
+        for (int i = 0; i < nets_size; i++) {
             // if (database.nets[i].getName() == "net8984") netsToRoute.push_back(i);
             netsToRoute.push_back(i);
         }
@@ -503,6 +506,7 @@ double Router::route(vector<float> rank_score) {
         database.writeDEF(fn);
         unfinish();
     }
+    iter ++;
     return total_score;
 }
 

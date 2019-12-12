@@ -22,8 +22,6 @@ void Drcu::reset() {
     init(_argc, _short_format_argv);
 }
 
-int Drcu::step() { return _router.step(); }
-
 int Drcu::feed_argv(int argc, char *short_format_argv[]) {
     _long_format_argv[0] = short_format_argv[0];
     if (argc > 2) convert_argv_format(short_format_argv);
@@ -250,9 +248,9 @@ void Drcu::test(int argc, char *short_format_argv[]) {
 }
 
 void Drcu::close() {
-    database.writeNetTopo(db::setting.outputFile + ".topo");
+    // database.writeNetTopo(db::setting.outputFile + ".topo");
     database.clear();
-    database.writeDEF(db::setting.outputFile);
+    // database.writeDEF(db::setting.outputFile);
     if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Finish writing def" << std::endl;
         log() << "MEM: cur=" << utils::mem_use::get_current() << "MB, peak=" << utils::mem_use::get_peak() << "MB"
@@ -294,38 +292,30 @@ int Drcu::prepare() {
     return 0;
 }
 
-Drcu::Res Drcu::step(float rank_score) {
+Drcu::Res Drcu::step(const vector<float>& rank_score) {
     Res res;
-    if (_step_cnt < _features_norm.size()) {
-        res.done = false;
-        _rank_score.emplace_back(rank_score);
-        res.feature.assign(_features_norm.at(_step_cnt).begin(), _features_norm.at(_step_cnt).end());
-        res.reward = 0;
-        float reward = (_features_norm.at(_step_cnt - 1).at(0) - rank_score);
-        reward = - reward * reward;
-        res.reward = reward;
+//    vector<float> size;
+//    for (auto e: _features_norm) {
+//        size.emplace_back(e.at(0));
+//    }
+    if (_step_cnt < IRR_LIMIT) {
+        res.reward = - _router.route(rank_score);
         _step_cnt++;
-    } else {
-        res.done = true;
-        _rank_score.emplace_back(rank_score);
-        res.feature.emplace_back(0);
-        res.feature.emplace_back(0);
-        // route
-//        res.reward = -_router.route(_rank_score);
-//        float reward = (_features_norm.at(_step_cnt - 1).at(0) - rank_score);
-//        reward = - reward * reward;
-//        res.reward = reward;
-        for(int i = 0; i < _features_norm.size(); ++i){
-            float reward = _features_norm.at(i).at(0) - _rank_score.at(i);
-            reward = - reward * reward;
-            res.reward += reward;
+        if (prepare()) {
+            res.done = true;
+        } else {
+            res.done = false;
+            res.feature = _features_norm;
         }
-    }
 
+    } else {
+        res.reward = - _router.route(rank_score);
+        res.done = true;
+    }
     return res;
 }
 
-vector<float> Drcu::get_the_1st_observation() {
+vector<vector<float>> Drcu::get_the_1st_observation() {
     _step_cnt++;
-    return vector<float>(_features_norm.at(0));
+    return vector<vector<float>>(_features_norm);
 }

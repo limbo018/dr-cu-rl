@@ -15,21 +15,21 @@
 using namespace cpprl;
 
 // Algorithm hyperparameters
-const std::string algorithm = "PPO";
+const std::string algorithm = "A2C";
 const float actor_loss_coef = 1.0;
-const int batch_size = 40;
+const int batch_size = 4;
 const float clip_param = 0.2;
 const float discount_factor = 0.99;
 const float entropy_coef = 1e-3;
 const float gae = 0.9;
 const float kl_target = 0.5;
-const float learning_rate = 1e-3;
+const float learning_rate = 1e-4;
 const int log_interval = 50;
-const int max_frames = 10e+7;
+const long max_frames = 10e+11;
 const int num_epoch = 3;
 const int num_mini_batch = 20;
 const int reward_average_window_size = 10;
-const float reward_clip_value = 100;  // Post scaling
+const float reward_clip_value = 1000000;  // Post scaling
 const bool use_gae = true;
 const bool use_lr_decay = false;
 const float value_loss_coef = 0.5;
@@ -40,14 +40,13 @@ const int num_envs = 1;
 // Model hyperparameters
 const int hidden_size = 64;
 const bool recurrent = false;
-const bool use_cuda = false;
+const bool use_cuda = true;
 
-struct InfoResponse
-{
-  std::string action_space_type;
-  std::vector<int64_t> action_space_shape;
-  std::string observation_space_type;
-  std::vector<int64_t> observation_space_shape;
+struct InfoResponse {
+    std::string action_space_type;
+    std::vector<int64_t> action_space_shape;
+    std::string observation_space_type;
+    std::vector<int64_t> observation_space_shape;
 };
 
 std::vector<float> flatten_vector(std::vector<float> const &input) { return input; }
@@ -78,9 +77,9 @@ int main(int argc, char *argv[]) {
     // environment information
     std::unique_ptr<InfoResponse> env_info = std::make_unique<InfoResponse>();
     env_info->action_space_type = "Box";
-    env_info->action_space_shape = {1};
+    env_info->action_space_shape = {3153};
     env_info->observation_space_type = "Box";
-    env_info->observation_space_shape = {2};
+    env_info->observation_space_shape = {3153 * 2};
     spdlog::info("Action space: {} - [{}]", env_info->action_space_type, env_info->action_space_shape);
     spdlog::info("Observation space: {} - [{}]", env_info->observation_space_type, env_info->observation_space_shape);
 
@@ -111,6 +110,7 @@ int main(int argc, char *argv[]) {
     } else {
         base = std::make_shared<CnnBase>(env_info->observation_space_shape[0], recurrent, hidden_size);
     }
+//    torch::load(base, "base_ap_s.pt");
     base->to(device);
     ActionSpace space{env_info->action_space_type, env_info->action_space_shape};
     Policy policy(nullptr);
@@ -119,8 +119,9 @@ int main(int argc, char *argv[]) {
         policy = Policy(space, base, false);
     } else {
         // Without observation normalization
-        policy = Policy(space, base, true);
+        policy = Policy(space, base, false);
     }
+//    torch::load(policy, "policy_ap_s.pt");
     policy->to(device);
     RolloutStorage storage(batch_size, num_envs, env_info->observation_space_shape, space, hidden_size, device);
     std::unique_ptr<Algorithm> algo;
@@ -150,7 +151,7 @@ int main(int argc, char *argv[]) {
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    int num_updates = max_frames / (batch_size * num_envs);
+    double num_updates = max_frames / (batch_size * num_envs);
     for (int update = 0; update < num_updates; ++update) {
         for (int step = 0; step < batch_size; ++step) {
             std::vector<torch::Tensor> act_result;
@@ -173,10 +174,11 @@ int main(int argc, char *argv[]) {
                 }
             }
             // step
-            if (res.done.at(0))
-                res = envs.reset();
-            else
-                res = envs.step(actions);
+            res = envs.step(actions);
+            if(res.done.at(0)) {
+              auto reset_res = envs.reset();
+              res.feature = reset_res.feature;
+            }
 
             std::vector<float> rewards;
             std::vector<float> real_rewards;
@@ -221,7 +223,7 @@ int main(int argc, char *argv[]) {
                 running_rewards[i] += real_rewards[i];
                 if (dones_vec[i][0]) {
                     reward_history[episode_count % reward_average_window_size] = running_rewards[i];
-                    spdlog::info("Reward: {}", running_rewards[i]);
+                    spdlog::info("Update: {}, Reward: {}",update, real_rewards[i]);
                     running_rewards[i] = 0;
                     returns[i] = 0;
                     episode_count++;
@@ -274,13 +276,13 @@ int main(int argc, char *argv[]) {
 //            for (const auto &datum : update_data) {
 //                spdlog::info("{}: {}", datum.name, datum.value);
 //            }
+//            torch::save(base, "base_apr_a2c.pt");
+//            torch::save(policy, "policy_apr_a2c.pt");
             if (episode_count) {
                 float average_reward = std::accumulate(reward_history.begin(), reward_history.end(), 0);
                 average_reward /=
                         episode_count < reward_average_window_size ? episode_count : reward_average_window_size;
-                spdlog::info("average_reward Reward: {}", average_reward);
-                torch::save(base, "base_apprach.pt");
-                torch::save(policy, "policy_apprach.pt");
+//                spdlog::info("average_reward Reward: {}", average_reward);
             }
         }
     }
