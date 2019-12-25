@@ -17,7 +17,6 @@ public:
     Res init(int argc, char* short_format_argv[]);
 private:
     std::vector<Drcu> _envs{NUM_ENVS};
-    const uint32_t  NET_NUM{3153};
 
 
 };

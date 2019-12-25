@@ -68,7 +68,7 @@ db::RouteStatus PreRoute::runIterative() {
         status = run(numPitchForGuideExpand);
     }
 
-    if (iter >= 1) {
+    if (iter >= 1 && db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Warning: Net " << localNet.getName() << " expands " << iter << " iterations"
               << ", which takes " << singleNetTimer.elapsed() << " s in total." << std::endl;
         if (status == +db::RouteStatus::FAIL_DETACHED_GUIDE) {

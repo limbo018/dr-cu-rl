@@ -14,7 +14,7 @@ public:
         bool done = false;
         float reward = 0;
     };
-    Res step(const vector<float>& rank_score);
+    Res step(const vector<float>& action);
     vector<vector<float>> get_the_1st_observation();
 private:
     std::string _long_format_argv[13] = {"argv[0]",

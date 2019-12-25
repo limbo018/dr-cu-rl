@@ -22,10 +22,6 @@ Envs::Res Envs::step(const std::vector<std::vector<float>> &actions) {
     for (int i = 0; i < NUM_ENVS; i++) {
         drcu_res = _envs[i].step(actions.at(i));
         res.feature.at(i) = drcu_res.feature;
-        if (res.feature.at(i).size() < NET_NUM) {
-            vector<vector<float>> feature_fill(NET_NUM - res.feature.at(i).size(), {0, 0});
-            res.feature.at(i).insert(res.feature.at(i).end(), feature_fill.begin(), feature_fill.end());
-        }
         res.reward.emplace_back(drcu_res.reward);
         res.done.emplace_back(drcu_res.done);
     }

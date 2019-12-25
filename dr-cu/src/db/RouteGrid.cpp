@@ -971,7 +971,9 @@ double RouteGrid::get_score() {
         double totalScore = 0;
         for (int i = 0; i < items.size(); ++i) {
             totalScore += metrics[i] * weights[i];
+//            std::cout << metrics[i] << ",";
         }
+//        std::cout << "\n";
         return totalScore;
 }
 

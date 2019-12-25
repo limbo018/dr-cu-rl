@@ -202,6 +202,7 @@ public:
     void addViaHistCost();
     void fadeHistCost(const vector<int>& exceptedNets);  // excepted because still not routed...
     void statHistCost() const;
+    CostT getNetVioCost(const Net& net) const;
 
 protected:
     // Unit cost

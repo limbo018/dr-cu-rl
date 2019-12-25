@@ -356,10 +356,18 @@ void Router::reset() {
 //    allNetStatus.resize(database.nets.size(), db::RouteStatus::FAIL_UNPROCESSED);
     iter = 0;
     db::setting.rrrIterLimit = 4;
+    vector<float> temp(Router::Feature_idx::FEA_DIM, 0);
+    for (auto &e: _feature) {
+        e.assign(temp.begin(), temp.end());
+    }
 }
 
 void Router::init() {
     allNetStatus.resize(database.nets.size(), db::RouteStatus::FAIL_UNPROCESSED);
+    _feature.resize(database.nets.size());
+    for (auto &e: _feature) {
+        e.resize(Router::Feature_idx::FEA_DIM, 0);
+    }
     iter = 0;
 }
 
@@ -378,21 +386,21 @@ void Router::pre_route(const vector<int> &netsToRoute) {
         printStat();
     }
 }
-
+/*
+ * ret: feature[[<should be routed>, <size>, <degree>, <>],...]
+ * */
 vector<vector<int>> Router::get_nets_feature() {
-    vector<int> size{};
-    for (const auto &router: _routers) {
-        size.emplace_back(router.localNet.estimatedNumOfVertices);
-    }
     Scheduler scheduler(_routers);
     vector<int> degree = scheduler.get_net_degree();
-    vector<vector<int>> feature;
-    feature.resize(_routers.size());
+
     for (int i = 0; i < _routers.size(); ++i) {
-        feature.at(i).emplace_back(size.at(i));
-        feature.at(i).emplace_back(degree.at(i));
+        auto net_id = _routers.at(i).dbNet.idx;
+        _feature.at(net_id).at(ROUTED) = 1;
+        _feature.at(net_id).at(SIZE) = _routers.at(i).localNet.estimatedNumOfVertices;
+        _feature.at(net_id).at(DEGREE) = degree.at(i);
+        _feature.at(net_id).at(NUM_RIP_UP) += 1;
     }
-    return vector<vector<int>>(feature);
+    return vector<vector<int>>(_feature);
 }
 
 int Router::prepare() {

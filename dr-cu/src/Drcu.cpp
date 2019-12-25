@@ -23,13 +23,23 @@ void Drcu::reset() {
 }
 
 int Drcu::feed_argv(int argc, char *short_format_argv[]) {
-    _long_format_argv[0] = short_format_argv[0];
-    if (argc > 2) convert_argv_format(short_format_argv);
-
     char *argv[13];
-    for (int i = 0; i < 13; ++i) {
-        argv[i] = const_cast<char *>(_long_format_argv[i].c_str());
+    _long_format_argv[0] = short_format_argv[0];
+    if (argc == 2) {
+        for (int i = 0; i < 13; ++i) {
+            argv[i] = const_cast<char *>(_long_format_argv[i].c_str());
+        }
+    } else if (argc == 3) {
+        convert_argv_format(short_format_argv);
+        for (int i = 0; i < 13; ++i) {
+            argv[i] = const_cast<char *>(_long_format_argv[i].c_str());
+        }
+    } else if (argc == 13){
+        for (int i = 0; i < 13; ++i) {
+            argv[i] = const_cast<char *>(short_format_argv[i]);
+        }
     }
+
     if (db::setting.dbVerbose >= +db::VerboseLevelT::HIGH) {
         printlog("------------------------------------------------------------------------------");
         printlog("                    ISPD 2019 - Detailed Routing Contest                      ");
@@ -270,36 +280,54 @@ int Drcu::prepare() {
 
     _features = _router.get_nets_feature();
 
-    std::array<int, 2> min{_features.at(0).at(0), _features.at(0).at(1)};
-    std::array<int, 2> max{_features.at(0).at(0), _features.at(0).at(1)};
+    std::array<int, Router::Feature_idx::FEA_DIM - 1> min{};
+    std::array<int, Router::Feature_idx::FEA_DIM - 1> max{};
+    for (int i = 1; i < Router::Feature_idx::FEA_DIM; ++ i) {
+        min.at(i - 1) = _features.at(0).at(i);
+        max.at(i - 1) = _features.at(0).at(i);
+
+    }
+
     for (auto feature : _features) {
-        for (int i = 0; i < 2; ++i) {
-            if (max.at(i) < feature.at(i)) max.at(i) = feature.at(i);
-            if (min.at(i) > feature.at(i)) min.at(i) = feature.at(i);
+        for (int i = 1; i < Router::Feature_idx::FEA_DIM; ++i) {
+            max.at(i - 1) = std::max(feature.at(i), max.at(i - 1));
+            min.at(i - 1) = std::min(feature.at(i), min.at(i - 1));
         }
     }
     _features_norm.resize(_features.size());
     for (int i = 0; i < _features.size(); ++i) {
-        _features_norm.at(i).resize(2);
-        for (int j = 0; j < 2; ++j) {
+        _features_norm.at(i).resize(Router::Feature_idx::FEA_DIM);
+        _features_norm.at(i).at(0) = _features.at(i).at(0);
+    }
+    for (int i = 0; i < _features.size(); ++i) {
+        for (int j = 1; j < Router::Feature_idx::FEA_DIM; ++j) {
             float val = _features.at(i).at(j);
-            val = (val - min.at(j)) / static_cast<float>(max.at(j) - min.at(j));
-            val = val * 2 - 1;
-            _features_norm.at(i).at(j) = val;
+            if(max.at(j - 1) - min.at(j - 1)) {
+                val = (val - min.at(j - 1)) / static_cast<float>(max.at(j - 1) - min.at(j - 1));
+                val = val * 2 - 1;
+                _features_norm.at(i).at(j) = val;
+            }
+            else {
+                _features_norm.at(i).at(j) = -1;
+            }
+
         }
     }
 
     return 0;
 }
 
-Drcu::Res Drcu::step(const vector<float>& rank_score) {
+Drcu::Res Drcu::step(const vector<float>& action) {
     Res res;
-//    vector<float> size;
-//    for (auto e: _features_norm) {
-//        size.emplace_back(e.at(0));
-//    }
+    vector<float> rank_score;
+    for (int i = 0; i < _features.size(); ++i) {
+        if (_features.at(i).at(0) == 1) {
+            rank_score.emplace_back(action.at(i));
+        }
+    }
+    res.reward = - _router.route(rank_score) + 56631.4;
+    res.reward /= 1000.0;
     if (_step_cnt < IRR_LIMIT) {
-        res.reward = - _router.route(rank_score);
         _step_cnt++;
         if (prepare()) {
             res.done = true;
@@ -309,7 +337,6 @@ Drcu::Res Drcu::step(const vector<float>& rank_score) {
         }
 
     } else {
-        res.reward = - _router.route(rank_score);
         res.done = true;
     }
     return res;

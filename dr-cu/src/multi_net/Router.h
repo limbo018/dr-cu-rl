@@ -14,11 +14,13 @@ public:
     vector<vector<int>> get_nets_feature();
     double route(vector<float > rank_score);
     int prepare();
+    enum Feature_idx{ROUTED=0, SIZE, DEGREE, NUM_RIP_UP, FEA_DIM};
 private:
     int iter=0;
     vector<db::RouteStatus> allNetStatus;
     vector<SingleNetRouter> _routers;
     vector<int> _nets_to_route;
+    vector<vector<int>> _feature;
 
     void ripup(const vector<int>& netsToRoute);
     void updateCost(const vector<int>& netsToRoute);

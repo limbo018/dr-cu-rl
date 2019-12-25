@@ -29,7 +29,7 @@ const long max_frames = 10e+11;
 const int num_epoch = 3;
 const int num_mini_batch = 20;
 const int reward_average_window_size = 10;
-const float reward_clip_value = 1000000;  // Post scaling
+const float reward_clip_value = 100;  // Post scaling
 const bool use_gae = true;
 const bool use_lr_decay = false;
 const float value_loss_coef = 0.5;
@@ -40,7 +40,7 @@ const int num_envs = 1;
 // Model hyperparameters
 const int hidden_size = 64;
 const bool recurrent = false;
-const bool use_cuda = true;
+//const bool use_cuda = false;
 
 struct InfoResponse {
     std::string action_space_type;
@@ -72,23 +72,22 @@ int main(int argc, char *argv[]) {
     at::set_num_threads(1);
     torch::manual_seed(0);
 
-    torch::Device device = use_cuda ? torch::kCUDA : torch::kCPU;
+    torch::Device device = torch::cuda::is_available() ? torch::kCUDA : torch::kCPU;
 
     // environment information
     std::unique_ptr<InfoResponse> env_info = std::make_unique<InfoResponse>();
     env_info->action_space_type = "Box";
-    env_info->action_space_shape = {3153};
     env_info->observation_space_type = "Box";
-    env_info->observation_space_shape = {3153 * 2};
-    spdlog::info("Action space: {} - [{}]", env_info->action_space_type, env_info->action_space_shape);
-    spdlog::info("Observation space: {} - [{}]", env_info->observation_space_type, env_info->observation_space_shape);
 
     // reset
     spdlog::info("Resetting environment");
     Envs envs;
     Envs::Res res;
     res = envs.init(argc, argv);
-    //res = envs.reset();
+    env_info->action_space_shape.emplace_back(res.feature.at(0).size());
+    env_info->observation_space_shape.emplace_back(res.feature.at(0).size() * 3);
+    spdlog::info("Action space: {} - [{}]", env_info->action_space_type, env_info->action_space_shape);
+    spdlog::info("Observation space: {} - [{}]", env_info->observation_space_type, env_info->observation_space_shape);
 
     // observation
     auto observation_shape = env_info->observation_space_shape;
@@ -110,7 +109,7 @@ int main(int argc, char *argv[]) {
     } else {
         base = std::make_shared<CnnBase>(env_info->observation_space_shape[0], recurrent, hidden_size);
     }
-//    torch::load(base, "base_ap_s.pt");
+//    torch::load(base, "base_s.pt");
     base->to(device);
     ActionSpace space{env_info->action_space_type, env_info->action_space_shape};
     Policy policy(nullptr);
@@ -121,7 +120,7 @@ int main(int argc, char *argv[]) {
         // Without observation normalization
         policy = Policy(space, base, false);
     }
-//    torch::load(policy, "policy_ap_s.pt");
+//    torch::load(policy, "policy_s.pt");
     policy->to(device);
     RolloutStorage storage(batch_size, num_envs, env_info->observation_space_shape, space, hidden_size, device);
     std::unique_ptr<Algorithm> algo;
@@ -175,6 +174,7 @@ int main(int argc, char *argv[]) {
             }
             // step
             res = envs.step(actions);
+//            spdlog::debug("step reward: {}, action 0: {}", res.reward, actions.at(0).at(0));
             if(res.done.at(0)) {
               auto reset_res = envs.reset();
               res.feature = reset_res.feature;
@@ -276,8 +276,8 @@ int main(int argc, char *argv[]) {
 //            for (const auto &datum : update_data) {
 //                spdlog::info("{}: {}", datum.name, datum.value);
 //            }
-//            torch::save(base, "base_apr_a2c.pt");
-//            torch::save(policy, "policy_apr_a2c.pt");
+//            torch::save(base, "base_s.pt");
+//            torch::save(policy, "policy_s.pt");
             if (episode_count) {
                 float average_reward = std::accumulate(reward_history.begin(), reward_history.end(), 0);
                 average_reward /=

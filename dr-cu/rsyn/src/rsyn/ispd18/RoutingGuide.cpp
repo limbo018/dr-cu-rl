@@ -60,7 +60,7 @@ void RoutingGuide::loadGuides(const GuideDscp & dscp) {
 				layerGuide.clsPhLayer = clsPhDesign.getPhysicalLayerByName(layerDscp.clsLayer);
 			} // end for
 		} else {
-			std::cout << "WARNING: Net '" << netDscp.clsNetName << "' does not exist and the routing guide is being ignored.\n";
+//			std::cout << "WARNING: Net '" << netDscp.clsNetName << "' does not exist and the routing guide is being ignored.\n";
 		} // end else
 	} // end for 
 } // end method
