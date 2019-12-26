@@ -25,10 +25,9 @@ const float gae = 0.9;
 const float kl_target = 0.5;
 const float learning_rate = 1e-4;
 const int log_interval = 50;
-const long max_frames = 10e+11;
+const int num_updates= 10e+5;
 const int num_epoch = 3;
 const int num_mini_batch = 20;
-const int reward_average_window_size = 10;
 const float reward_clip_value = 100;  // Post scaling
 const bool use_gae = true;
 const bool use_lr_decay = false;
@@ -144,14 +143,12 @@ int main(int argc, char *argv[]) {
     std::vector<float> running_rewards(num_envs);
     int episode_count = 0;
 
-    std::vector<float> reward_history(reward_average_window_size);
+    float reward_to_print = 0;
     RunningMeanStd returns_rms(1);
     auto returns = torch::zeros({num_envs});
 
-    auto start_time = std::chrono::high_resolution_clock::now();
-
-    double num_updates = max_frames / (batch_size * num_envs);
     for (int update = 0; update < num_updates; ++update) {
+        auto batch_start_time = std::chrono::high_resolution_clock::now();
         for (int step = 0; step < batch_size; ++step) {
             std::vector<torch::Tensor> act_result;
             {
@@ -160,7 +157,6 @@ int main(int argc, char *argv[]) {
                         storage.get_observations()[step], storage.get_hidden_states()[step], storage.get_masks()[step]);
             }
             auto actions_tensor = act_result[1].cpu().to(torch::kFloat);
-//            auto actions_tensor = act_result[1].to(device).to(torch::kFloat);
             float *actions_array = actions_tensor.data_ptr<float>();
             std::vector<std::vector<float>> actions(num_envs);
             for (int i = 0; i < num_envs; ++i) {
@@ -174,10 +170,9 @@ int main(int argc, char *argv[]) {
             }
             // step
             res = envs.step(actions);
-//            spdlog::debug("step reward: {}, action 0: {}", res.reward, actions.at(0).at(0));
-            if(res.done.at(0)) {
-              auto reset_res = envs.reset();
-              res.feature = reset_res.feature;
+            if (res.done.at(0)) {
+                auto reset_res = envs.reset();
+                res.feature = reset_res.feature;
             }
 
             std::vector<float> rewards;
@@ -196,7 +191,6 @@ int main(int argc, char *argv[]) {
                 rewards = std::vector<float>(reward_tensor.data_ptr<float>(),
                                              reward_tensor.data_ptr<float>() + reward_tensor.numel());
                 real_rewards = flatten_vector(res.reward);
-                // dones_vec = {envs._done};
                 for (int i = 0; i < num_envs; i++) {
                     dones_vec[i].push_back(res.done.at(i));
                 }
@@ -222,8 +216,7 @@ int main(int argc, char *argv[]) {
             for (int i = 0; i < num_envs; ++i) {
                 running_rewards[i] += real_rewards[i];
                 if (dones_vec[i][0]) {
-                    reward_history[episode_count % reward_average_window_size] = running_rewards[i];
-                    spdlog::info("Update: {}, Reward: {}",update, real_rewards[i]);
+                    reward_to_print = running_rewards[i];
                     running_rewards[i] = 0;
                     returns[i] = 0;
                     episode_count++;
@@ -243,6 +236,9 @@ int main(int argc, char *argv[]) {
                            1 - dones);
         }
 
+        auto batch_run_time = std::chrono::high_resolution_clock::now() - batch_start_time;
+//        spdlog::info("runtime: {}s",
+//                     std::chrono::duration_cast<std::chrono::milliseconds>(batch_run_time).count() / 1000.0);
         torch::Tensor next_value;
         {
             torch::NoGradGuard no_grad;
@@ -264,26 +260,16 @@ int main(int argc, char *argv[]) {
         auto update_data = algo->update(storage, decay_level);
         storage.after_update();
 
+        spdlog::info("update: {}, runtime: {}s, reward: {}", update,
+                     std::chrono::duration_cast<std::chrono::seconds>(batch_run_time).count(),
+                     reward_to_print
+        );
         if (update % log_interval == 0 && update > 0) {
-            auto total_steps = (update + 1) * batch_size * num_envs;
-            auto run_time = std::chrono::high_resolution_clock::now() - start_time;
-            auto run_time_secs = std::chrono::duration_cast<std::chrono::seconds>(run_time);
-            auto fps = total_steps / (run_time_secs.count() + 1e-9);
-            //            spdlog::info("---");
-            //            spdlog::info("Update: {}/{}", update, num_updates);
-            //            spdlog::info("Total frames: {}", total_steps);
-            //            spdlog::info("FPS: {}", fps);
 //            for (const auto &datum : update_data) {
 //                spdlog::info("{}: {}", datum.name, datum.value);
 //            }
 //            torch::save(base, "base_s.pt");
 //            torch::save(policy, "policy_s.pt");
-            if (episode_count) {
-                float average_reward = std::accumulate(reward_history.begin(), reward_history.end(), 0);
-                average_reward /=
-                        episode_count < reward_average_window_size ? episode_count : reward_average_window_size;
-//                spdlog::info("average_reward Reward: {}", average_reward);
-            }
         }
     }
 }
