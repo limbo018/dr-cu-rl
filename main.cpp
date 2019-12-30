@@ -24,7 +24,7 @@ const float entropy_coef = 1e-3;
 const float gae = 0.9;
 const float kl_target = 0.5;
 const float learning_rate = 1e-4;
-const int log_interval = 50;
+const int log_interval = 5;
 const int num_updates= 10e+5;
 const int num_epoch = 3;
 const int num_mini_batch = 20;
@@ -39,7 +39,9 @@ const int num_envs = 1;
 // Model hyperparameters
 const int hidden_size = 64;
 const bool recurrent = false;
-//const bool use_cuda = false;
+const std::string model_name_prefix = "se";
+const bool save_model = true;
+const bool load_model = true;
 
 struct InfoResponse {
     std::string action_space_type;
@@ -110,7 +112,8 @@ int main(int argc, char *argv[]) {
     } else {
         base = std::make_shared<CnnBase>(env_info->observation_space_shape[0], recurrent, hidden_size);
     }
-//    torch::load(base, "base_s.pt");
+    if (load_model)
+        torch::load(base, "base_" + model_name_prefix + ".pt");
     base->to(device);
     ActionSpace space{env_info->action_space_type, env_info->action_space_shape};
     Policy policy(nullptr);
@@ -121,7 +124,8 @@ int main(int argc, char *argv[]) {
         // Without observation normalization
         policy = Policy(space, base, false);
     }
-//    torch::load(policy, "policy_s.pt");
+    if (load_model)
+        torch::load(policy, "policy_" + model_name_prefix + ".pt");
     policy->to(device);
     RolloutStorage storage(batch_size, num_envs, env_info->observation_space_shape, space, hidden_size, device);
     std::unique_ptr<Algorithm> algo;
@@ -264,8 +268,9 @@ int main(int argc, char *argv[]) {
         auto update_data = algo->update(storage, decay_level);
         storage.after_update();
 
-        spdlog::info("[{}s], update: {}, runtime: {:03.2f}s, vios: [{}, {}, {}, {}], reward: {}", update,
+        spdlog::info("{}s: update: {}, runtime: {:03.2f}s, vios: [{}, {}, {}, {}], reward: {}",
                      std::chrono::duration_cast<std::chrono::seconds>(total_run_time).count(),
+                     update,
                      std::chrono::duration_cast<std::chrono::milliseconds>(batch_run_time).count() / 1000.0,
                      vios.at(0), vios.at(1), vios.at(2), vios.at(3),
                      reward_to_print
@@ -274,8 +279,11 @@ int main(int argc, char *argv[]) {
 //            for (const auto &datum : update_data) {
 //                spdlog::info("{}: {}", datum.name, datum.value);
 //            }
-//            torch::save(base, "base_s.pt");
-//            torch::save(policy, "policy_s.pt");
+            if (save_model) {
+                torch::save(base, "base_" + model_name_prefix + ".pt");
+                torch::save(policy, "policy_" + model_name_prefix + ".pt");
+            }
+
         }
     }
 }
