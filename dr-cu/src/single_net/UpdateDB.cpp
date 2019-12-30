@@ -53,6 +53,18 @@ void UpdateDB::commitViaTypes(db::Net& dbNet) {
     });
 };
 
+double UpdateDB::get_net_vio_cost(db::Net &dbNet) {
+    double net_cost{0};
+    auto checkEdge = [&](const db::GridEdge& edge) {
+        double edge_cost = database.getEdgeVioCost(edge, dbNet.idx, false);
+        net_cost += edge_cost;
+    };
+    dbNet.postOrderVisitGridTopo([&](std::shared_ptr<db::GridSteiner> node) {
+        if (node->parent) checkEdge({*node, *(node->parent)});
+        if (node->extWireSeg) checkEdge(*(node->extWireSeg));
+    });
+    return net_cost;
+}
 bool UpdateDB::checkViolation(db::Net &dbNet) {
     bool hasVio = false;
     auto checkEdge = [&](const db::GridEdge& edge) {

@@ -185,6 +185,9 @@ public:
     void getAllViaUsage(const vector<int>& buckets, const ViaMapT& routedViaMap, vector<int>& viaUsage) const;
     std::pair<double, double> printAllUsage() const;
     std::string getRangeStr(const vector<int>& buckets, int i) const;
+    void get_net_wire_vio_usage(std::unordered_map<int, int>& via_usage,
+                                std::unordered_map<int, float>& wire_usage_length,
+                                std::unordered_map<int, std::set<int>>& layer_usage);
     // violations
     void getAllWireShortVio(vector<int>& shortNum, vector<DBU>& shortLen) const;
     void getAllPoorWire(vector<int>& num, vector<DBU>& len) const;
@@ -202,7 +205,6 @@ public:
     void addViaHistCost();
     void fadeHistCost(const vector<int>& exceptedNets);  // excepted because still not routed...
     void statHistCost() const;
-    CostT getNetVioCost(const Net& net) const;
 
 protected:
     // Unit cost

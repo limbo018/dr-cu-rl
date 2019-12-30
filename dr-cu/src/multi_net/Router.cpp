@@ -87,6 +87,7 @@ void Router::run() {
 
 vector<int> Router::getNetsToRoute() {
     vector<int> netsToRoute;
+    _nets_cost.clear();
     if (iter == 0) {
         auto nets_size = database.nets.size();
 //        if(nets_size > 1000)
@@ -94,11 +95,13 @@ vector<int> Router::getNetsToRoute() {
         for (int i = 0; i < nets_size; i++) {
             // if (database.nets[i].getName() == "net8984") netsToRoute.push_back(i);
             netsToRoute.push_back(i);
+            _nets_cost.emplace_back(0);
         }
     } else {
         for (auto &net : database.nets) {
             if (UpdateDB::checkViolation(net)) {
                 netsToRoute.push_back(net.idx);
+                _nets_cost.emplace_back(static_cast<float>(UpdateDB::get_net_vio_cost(net)));
             }
         }
     }
@@ -356,9 +359,8 @@ void Router::reset() {
 //    allNetStatus.resize(database.nets.size(), db::RouteStatus::FAIL_UNPROCESSED);
     iter = 0;
     db::setting.rrrIterLimit = 4;
-    vector<float> temp(Router::Feature_idx::FEA_DIM, 0);
     for (auto &e: _feature) {
-        e.assign(temp.begin(), temp.end());
+        e.assign(Router::Feature_idx::FEA_DIM, 0);
     }
 }
 
@@ -399,6 +401,7 @@ vector<vector<int>> Router::get_nets_feature() {
         _feature.at(net_id).at(SIZE) = _routers.at(i).localNet.estimatedNumOfVertices;
         _feature.at(net_id).at(DEGREE) = degree.at(i);
         _feature.at(net_id).at(NUM_RIP_UP) += 1;
+        _feature.at(net_id).at(VIO_COST) = _nets_cost.at(i);
     }
     return vector<vector<int>>(_feature);
 }
@@ -425,6 +428,10 @@ int Router::prepare() {
     if (iter > 0) {
         // updateCost should before ripup, otherwise, violated nets have gone
         updateCost(_nets_to_route);
+        _via_usage.clear();
+        _wire_usage_usage.clear();
+        _layer_usage.clear();
+        database.get_net_wire_vio_usage(_via_usage, _wire_usage_usage, _layer_usage);
         ripup(_nets_to_route);
     }
     database.statHistCost();

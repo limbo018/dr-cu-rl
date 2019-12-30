@@ -997,7 +997,30 @@ void RouteGrid::getAllWireUsage(const vector<int>& buckets,
         }
     }
 }
+void RouteGrid::get_net_wire_vio_usage(std::unordered_map<int, int>& via_usage,
+                                       std::unordered_map<int, float>& wire_usage_length,
+                                       std::unordered_map<int, std::set<int>>& layer_usage) {
+    for (int layer_idx = 0; layer_idx < getLayerNum(); ++layer_idx) {
+        for (const auto& track : routedWireMap[layer_idx]) {
+            for (const auto& usage : track) {
+                const auto& intval = usage.first;
+                for (int net_idx : usage.second) {
+                    DBU dist = layers.at(layer_idx).getCrossPointRangeDist({first(intval), last(intval)});
+                    wire_usage_length[net_idx] = dist / float(layers[1].pitch);
+                    layer_usage[net_idx].insert(layer_idx);
+                }
+            }
+        }
+    }
 
+    for (unsigned layerIdx = 0; (layerIdx + 1) < getLayerNum(); ++layerIdx) {
+        for (const auto& track : routedViaMap[layerIdx]) {
+            for ( const auto& usage: track) {
+                ++via_usage[usage.second];
+            }
+        }
+    }
+}
 void RouteGrid::getAllViaUsage(const vector<int>& buckets, const ViaMapT& viaMap, vector<int>& viaUsage) const {
     viaUsage.assign(buckets.size(), 0);
     for (unsigned layerIdx = 0; (layerIdx + 1) < getLayerNum(); ++layerIdx) {
