@@ -180,6 +180,7 @@ public:
     // Print stat
     double printAllUsageAndVio() const;
     double get_score();
+    std::array<double, 4> get_all_vio() const;
     // usage
     void getAllWireUsage(const vector<int>& buckets, vector<int>& wireUsageGrid, vector<DBU>& wireUsageLength) const;
     void getAllViaUsage(const vector<int>& buckets, const ViaMapT& routedViaMap, vector<int>& viaUsage) const;
@@ -249,6 +250,7 @@ protected:
     vector<vector<vector<std::pair<int, ViaData*>>>> poorViaMap;
     vector<bool> usePoorViaMap;
     vector<vector<std::unordered_map<int, HistUsageT>>> histViaMap;
+    std::array<double, 4> _vio_usage;
 };
 
 }  //   namespace db

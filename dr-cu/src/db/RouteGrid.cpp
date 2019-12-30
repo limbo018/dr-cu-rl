@@ -971,9 +971,8 @@ double RouteGrid::get_score() {
         double totalScore = 0;
         for (int i = 0; i < items.size(); ++i) {
             totalScore += metrics[i] * weights[i];
-//            std::cout << metrics[i] << ",";
+            _vio_usage.at(i) = metrics.at(i);
         }
-//        std::cout << "\n";
         return totalScore;
 }
 
@@ -1379,5 +1378,9 @@ void RouteGrid::statHistCost() const {
         printlog("Hist via usage is", histViaUsage);
     }
 }
+
+    std::array<double, 4> RouteGrid::get_all_vio() const {
+        return std::array<double, 4>(_vio_usage);
+    }
 
 }  // namespace db

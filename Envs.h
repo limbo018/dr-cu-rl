@@ -15,6 +15,7 @@ public:
     vector<vector<float>> reset(int env_idx);
     Res step(const std::vector<std::vector<float >>& actions);
     Res init(int argc, char* short_format_argv[]);
+    std::array<double, 4> get_all_vio() const;
 private:
     std::vector<Drcu> _envs{NUM_ENVS};
 

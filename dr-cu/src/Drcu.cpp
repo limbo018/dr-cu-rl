@@ -325,7 +325,7 @@ Drcu::Res Drcu::step(const vector<float>& action) {
             rank_score.emplace_back(action.at(i));
         }
     }
-    res.reward = - _router.route(rank_score) + 56631.4;
+    res.reward = - _router.route(rank_score) + 1988.59;
     res.reward /= 1000.0;
     if (_step_cnt < IRR_LIMIT) {
         _step_cnt++;

@@ -17,7 +17,7 @@ using namespace cpprl;
 // Algorithm hyperparameters
 const std::string algorithm = "A2C";
 const float actor_loss_coef = 1.0;
-const int batch_size = 4;
+const int batch_size = 5;
 const float clip_param = 0.2;
 const float discount_factor = 0.99;
 const float entropy_coef = 1e-3;
@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
     float reward_to_print = 0;
     RunningMeanStd returns_rms(1);
     auto returns = torch::zeros({num_envs});
-
+    std::array<double, 4> vios{0, 0, 0, 0};
     for (int update = 0; update < num_updates; ++update) {
         auto batch_start_time = std::chrono::high_resolution_clock::now();
         for (int step = 0; step < batch_size; ++step) {
@@ -176,6 +176,7 @@ int main(int argc, char *argv[]) {
                 auto reset_res = envs.reset();
                 res.feature = reset_res.feature;
             }
+            vios = envs.get_all_vio();
 
             std::vector<float> rewards;
             std::vector<float> real_rewards;
@@ -239,8 +240,6 @@ int main(int argc, char *argv[]) {
         }
 
         auto batch_run_time = std::chrono::high_resolution_clock::now() - batch_start_time;
-//        spdlog::info("runtime: {}s",
-//                     std::chrono::duration_cast<std::chrono::milliseconds>(batch_run_time).count() / 1000.0);
         torch::Tensor next_value;
         {
             torch::NoGradGuard no_grad;
@@ -262,8 +261,9 @@ int main(int argc, char *argv[]) {
         auto update_data = algo->update(storage, decay_level);
         storage.after_update();
 
-        spdlog::info("update: {}, runtime: {:03.2f}s, reward: {}", update,
+        spdlog::info("update: {}, runtime: {:03.2f}s, vios: [{}, {}, {}, {}], reward: {}", update,
                      std::chrono::duration_cast<std::chrono::milliseconds>(batch_run_time).count() / 1000.0,
+                     vios.at(0), vios.at(1), vios.at(2), vios.at(3),
                      reward_to_print
         );
         if (update % log_interval == 0 && update > 0) {
