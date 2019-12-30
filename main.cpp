@@ -211,7 +211,6 @@ int main(int argc, char *argv[]) {
                 rewards = std::vector<float>(reward_tensor.data_ptr<float>(),
                                              reward_tensor.data_ptr<float>() + reward_tensor.numel());
                 real_rewards = flatten_vector(res.reward);
-                // dones_vec = {envs._done};
                 for (int i = 0; i < num_envs; i++) {
                     dones_vec[i].push_back(res.done.at(i));
                 }
@@ -219,7 +218,7 @@ int main(int argc, char *argv[]) {
             for (int i = 0; i < num_envs; ++i) {
                 running_rewards[i] += real_rewards[i];
                 if (dones_vec[i][0]) {
-                    reward_to_print = running_rewards[i];
+                    reward_to_print = real_rewards[i];
                     running_rewards[i] = 0;
                     returns[i] = 0;
                     episode_count++;
