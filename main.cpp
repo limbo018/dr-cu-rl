@@ -83,8 +83,10 @@ int main(int argc, char *argv[]) {
     Envs envs;
     Envs::Res res;
     res = envs.init(argc, argv);
-    env_info->action_space_shape.emplace_back(res.feature.at(0).size());
-    env_info->observation_space_shape.emplace_back(res.feature.at(0).size() * 3);
+    int net_num = res.feature.at(0).size();
+    env_info->action_space_shape.emplace_back(net_num);
+    env_info->observation_space_shape.emplace_back(net_num * Router::Feature_idx::FEA_DIM);
+    spdlog::info("Net num: {}, Feature dim: {}", net_num, Router::Feature_idx::FEA_DIM);
     spdlog::info("Action space: {} - [{}]", env_info->action_space_type, env_info->action_space_shape);
     spdlog::info("Observation space: {} - [{}]", env_info->observation_space_type, env_info->observation_space_shape);
 
@@ -260,8 +262,8 @@ int main(int argc, char *argv[]) {
         auto update_data = algo->update(storage, decay_level);
         storage.after_update();
 
-        spdlog::info("update: {}, runtime: {}s, reward: {}", update,
-                     std::chrono::duration_cast<std::chrono::seconds>(batch_run_time).count(),
+        spdlog::info("update: {}, runtime: {:03.2f}s, reward: {}", update,
+                     std::chrono::duration_cast<std::chrono::milliseconds>(batch_run_time).count() / 1000.0,
                      reward_to_print
         );
         if (update % log_interval == 0 && update > 0) {

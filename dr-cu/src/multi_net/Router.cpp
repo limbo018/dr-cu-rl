@@ -388,9 +388,7 @@ void Router::pre_route(const vector<int> &netsToRoute) {
         printStat();
     }
 }
-/*
- * ret: feature[[<should be routed>, <size>, <degree>, <>],...]
- * */
+
 vector<vector<int>> Router::get_nets_feature() {
     Scheduler scheduler(_routers);
     vector<int> degree = scheduler.get_net_degree();
@@ -402,6 +400,17 @@ vector<vector<int>> Router::get_nets_feature() {
         _feature.at(net_id).at(DEGREE) = degree.at(i);
         _feature.at(net_id).at(NUM_RIP_UP) += 1;
         _feature.at(net_id).at(VIO_COST) = _nets_cost.at(i);
+        if (iter > 0) {
+            if (_wire_usage_length.count(net_id))
+                _feature.at(net_id).at(WIRE_LENGTH) = _wire_usage_length[net_id];
+            if (_via_usage.count(net_id))
+                _feature.at(net_id).at(VIA) = _via_usage[net_id];
+            if (_layer_usage.count(net_id)) {
+                for (auto layer_idx: _layer_usage[net_id]) {
+                    _feature.at(net_id).at(LAYER_BEGIN+layer_idx) = 1;
+                }
+            }
+        }
     }
     return vector<vector<int>>(_feature);
 }
@@ -429,9 +438,9 @@ int Router::prepare() {
         // updateCost should before ripup, otherwise, violated nets have gone
         updateCost(_nets_to_route);
         _via_usage.clear();
-        _wire_usage_usage.clear();
+        _wire_usage_length.clear();
         _layer_usage.clear();
-        database.get_net_wire_vio_usage(_via_usage, _wire_usage_usage, _layer_usage);
+        database.get_net_wire_vio_usage(_via_usage, _wire_usage_length, _layer_usage);
         ripup(_nets_to_route);
     }
     database.statHistCost();
