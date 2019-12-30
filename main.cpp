@@ -149,6 +149,9 @@ int main(int argc, char *argv[]) {
     RunningMeanStd returns_rms(1);
     auto returns = torch::zeros({num_envs});
     std::array<double, 4> vios{0, 0, 0, 0};
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+
     for (int update = 0; update < num_updates; ++update) {
         auto batch_start_time = std::chrono::high_resolution_clock::now();
         for (int step = 0; step < batch_size; ++step) {
@@ -239,6 +242,7 @@ int main(int argc, char *argv[]) {
         }
 
         auto batch_run_time = std::chrono::high_resolution_clock::now() - batch_start_time;
+        auto total_run_time = std::chrono::high_resolution_clock::now() - start_time;
         torch::Tensor next_value;
         {
             torch::NoGradGuard no_grad;
@@ -260,7 +264,8 @@ int main(int argc, char *argv[]) {
         auto update_data = algo->update(storage, decay_level);
         storage.after_update();
 
-        spdlog::info("update: {}, runtime: {:03.2f}s, vios: [{}, {}, {}, {}], reward: {}", update,
+        spdlog::info("[{}s], update: {}, runtime: {:03.2f}s, vios: [{}, {}, {}, {}], reward: {}", update,
+                     std::chrono::duration_cast<std::chrono::seconds>(total_run_time).count(),
                      std::chrono::duration_cast<std::chrono::milliseconds>(batch_run_time).count() / 1000.0,
                      vios.at(0), vios.at(1), vios.at(2), vios.at(3),
                      reward_to_print
