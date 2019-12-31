@@ -40,8 +40,8 @@ const int num_envs = 1;
 const int hidden_size = 64;
 const bool recurrent = false;
 const std::string model_name_prefix = "se";
-const bool save_model = true;
-const bool load_model = true;
+const bool save_model = false;
+const bool load_model = false;
 
 struct InfoResponse {
     std::string action_space_type;
@@ -178,14 +178,18 @@ int main(int argc, char *argv[]) {
                 }
             }
             // step
+            auto step_start_time = std::chrono::high_resolution_clock::now();
             res = envs.step(actions);
             if (res.done.at(0)) {
                 auto reset_res = envs.reset();
                 res.feature = reset_res.feature;
             }
             vios = envs.get_all_vio();
+            auto step_run_time = std::chrono::high_resolution_clock::now() - step_start_time;
+            spdlog::info("take a step, took {:03.2f}s",
+                         std::chrono::duration_cast<std::chrono::milliseconds>(step_run_time).count() / 1000.0);
 
-            std::vector<float> rewards;
+                    std::vector<float> rewards;
             std::vector<float> real_rewards;
             std::vector<std::vector<bool>> dones_vec{num_envs};
             if (env_info->observation_space_shape.size() > 1) {
