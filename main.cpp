@@ -112,8 +112,14 @@ int main(int argc, char *argv[]) {
     } else {
         base = std::make_shared<CnnBase>(env_info->observation_space_shape[0], recurrent, hidden_size);
     }
-    if (load_model)
-        torch::load(base, "base_" + model_name_prefix + ".pt");
+    if (load_model){
+        auto file_name = "base_" + model_name_prefix + ".pt";
+        std::ifstream fin(file_name);
+        if (fin) {
+            spdlog::info("loading base model");
+            torch::load(base, fin);
+        }
+    }
     base->to(device);
     ActionSpace space{env_info->action_space_type, env_info->action_space_shape};
     Policy policy(nullptr);
@@ -124,8 +130,14 @@ int main(int argc, char *argv[]) {
         // Without observation normalization
         policy = Policy(space, base, false);
     }
-    if (load_model)
-        torch::load(policy, "policy_" + model_name_prefix + ".pt");
+    if (load_model){
+        auto file_name = "policy_" + model_name_prefix + ".pt";
+        std::ifstream fin(file_name);
+        if (fin) {
+            spdlog::info("loading policy model");
+            torch::load(policy, fin);
+        }
+    };
     policy->to(device);
     RolloutStorage storage(batch_size, num_envs, env_info->observation_space_shape, space, hidden_size, device);
     std::unique_ptr<Algorithm> algo;
