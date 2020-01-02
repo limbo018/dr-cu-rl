@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
     spdlog::set_level(spdlog::level::debug);
     spdlog::set_pattern("%^[%T %7l] %v%$");
 
-    at::set_num_threads(1);
+    at::set_num_threads(8);
     torch::manual_seed(0);
 
     torch::Device device = torch::cuda::is_available() ? torch::kCUDA : torch::kCPU;
@@ -192,13 +192,17 @@ int main(int argc, char *argv[]) {
             // step
             auto step_start_time = std::chrono::high_resolution_clock::now();
             res = envs.step(actions);
+            auto step_run_time = std::chrono::high_resolution_clock::now() - step_start_time;
+            spdlog::debug("take a step, took {:03.2f}s",
+                         std::chrono::duration_cast<std::chrono::milliseconds>(step_run_time).count() / 1000.0);
             if (res.done.at(0)) {
+                auto reset_start_time = std::chrono::high_resolution_clock::now();
                 auto reset_res = envs.reset();
                 res.feature = reset_res.feature;
+                auto reset_run_time = std::chrono::high_resolution_clock::now() - reset_start_time;
+                spdlog::debug("reset, took {:03.2f}s",
+                             std::chrono::duration_cast<std::chrono::milliseconds>(reset_run_time).count() / 1000.0);
             }
-            auto step_run_time = std::chrono::high_resolution_clock::now() - step_start_time;
-            spdlog::info("take a step, took {:03.2f}s",
-                         std::chrono::duration_cast<std::chrono::milliseconds>(step_run_time).count() / 1000.0);
 
                     std::vector<float> rewards;
             std::vector<float> real_rewards;
