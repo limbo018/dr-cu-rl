@@ -196,7 +196,6 @@ int main(int argc, char *argv[]) {
                 auto reset_res = envs.reset();
                 res.feature = reset_res.feature;
             }
-            vios = envs.get_all_vio();
             auto step_run_time = std::chrono::high_resolution_clock::now() - step_start_time;
             spdlog::info("take a step, took {:03.2f}s",
                          std::chrono::duration_cast<std::chrono::milliseconds>(step_run_time).count() / 1000.0);
@@ -242,6 +241,7 @@ int main(int argc, char *argv[]) {
                 running_rewards[i] += real_rewards[i];
                 if (dones_vec[i][0]) {
                     reward_to_print = real_rewards[i];
+                    vios = envs.get_all_vio();
                     running_rewards[i] = 0;
                     returns[i] = 0;
                     episode_count++;
