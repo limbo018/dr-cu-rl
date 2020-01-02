@@ -393,7 +393,7 @@ vector<vector<int>> Router::get_nets_feature() {
     Scheduler scheduler(_routers);
     vector<int> degree = scheduler.get_net_degree();
 
-    for (int i = 0; i < _routers.size(); ++i) {
+    auto feature_mt = runJobsMT(_routers.size(), [&](int i) {
         auto net_id = _routers.at(i).dbNet.idx;
         _feature.at(net_id).at(ROUTED) = 1;
         _feature.at(net_id).at(SIZE) = _routers.at(i).localNet.estimatedNumOfVertices;
@@ -411,7 +411,7 @@ vector<vector<int>> Router::get_nets_feature() {
                 }
             }
         }
-    }
+    });
     return vector<vector<int>>(_feature);
 }
 
