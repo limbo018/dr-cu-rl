@@ -45,6 +45,7 @@ target_include_directories(dr-cu-rl
     ./dr-cu/rsyn/src/rsyn/export
     ./dr-cu/rsyn/include
 )
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/dr-cu/rsyn/lib/linux)
 #set_target_properties(dr-cu-rl PROPERTIES LINK_FLAGS "-static -Wl,--whole-archive -rdynamic -lpthread -Wl,--no-whole-archive")
 set_target_properties(dr-cu-rl PROPERTIES LINK_FLAGS "-Wl,--whole-archive -rdynamic -lpthread -Wl,--no-whole-archive")
 target_link_libraries(dr-cu-rl PRIVATE cpprl ispd19dr)

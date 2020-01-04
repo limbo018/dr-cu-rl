@@ -53,14 +53,8 @@ set(SRC_FILES ${SRC_FILES_RSYN} ${SRC_FILES_ISPD18})
 # Library Paths #
 #################
 # Need to come before target is created.
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-link_directories(${PATH_RSYN}/lib/linux)
-endif()
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-link_directories(${PATH_RSYN}/lib/macosx)
-endif()
+find_library(DEF_LIB NAMES libdef.a PATHS ${PATH_RSYN}/lib/linux NO_DEFAULT_PATH)
+find_library(LEF_LIB NAMES liblef.a PATHS ${PATH_RSYN}/lib/linux NO_DEFAULT_PATH)
 
 ###########
 # Targets #
@@ -96,8 +90,8 @@ set_target_properties(ispd19dr PROPERTIES LINK_FLAGS "-static -Wl,--whole-archiv
 # target_link_libraries(ispd19dr ${CMAKE_THREAD_LIBS_INIT})
 
 # LEF/DEF
-target_link_libraries(ispd19dr lef)
-target_link_libraries(ispd19dr def)
+target_link_libraries(ispd19dr ${LEF_LIB})
+target_link_libraries(ispd19dr ${DEF_LIB})
 
 # Boost
 target_include_directories(ispd19dr PUBLIC ${Boost_INCLUDE_DIR})
