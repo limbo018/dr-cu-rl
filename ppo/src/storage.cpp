@@ -28,8 +28,9 @@ RolloutStorage::RolloutStorage(int64_t num_steps,
                                   hidden_state_size},
                                  torch::TensorOptions(device));
     rewards = torch::zeros({num_steps, num_processes, 1}, torch::TensorOptions(device));
-    value_predictions = torch::zeros({num_steps + 1, num_processes, 1}, torch::TensorOptions(device));
-    returns = torch::zeros({num_steps + 1, num_processes, 1}, torch::TensorOptions(device));
+    //TODO: 11
+    value_predictions = torch::zeros({num_steps + 1, num_processes, 11, 1}, torch::TensorOptions(device));
+    returns = torch::zeros({num_steps + 1, num_processes, 11, 1}, torch::TensorOptions(device));
     action_log_probs = torch::zeros({num_steps, num_processes, 1}, torch::TensorOptions(device));
     int num_actions;
     if (action_space.type == "Discrete")
@@ -39,8 +40,10 @@ RolloutStorage::RolloutStorage(int64_t num_steps,
     else
     {
         num_actions = action_space.shape[0];
+        //TODO: 11
+        num_actions = 11;
     }
-    actions = torch::zeros({num_steps, num_processes, num_actions}, torch::TensorOptions(device));
+    actions = torch::zeros({num_steps, num_processes, num_actions, 1}, torch::TensorOptions(device));
     if (action_space.type == "Discrete")
     {
         actions = actions.to(torch::kLong);

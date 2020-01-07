@@ -42,7 +42,8 @@ std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts, float decay_level
     auto full_obs_shape = rollouts.get_observations().sizes();
     std::vector<int64_t> obs_shape(full_obs_shape.begin() + 2,
                                    full_obs_shape.end());
-    obs_shape.insert(obs_shape.begin(), -1);
+//    obs_shape.insert(obs_shape.begin(), -1);
+    obs_shape.at(0) = -1;
     auto action_shape = rollouts.get_actions().size(-1);
     auto rewards_shape = rollouts.get_rewards().sizes();
     int num_steps = rewards_shape[0];
@@ -60,7 +61,8 @@ std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts, float decay_level
         rollouts.get_hidden_states()[0].view({-1, policy->get_hidden_size()}),
         rollouts.get_masks().slice(0, 0, -1).view({-1, 1}),
         rollouts.get_actions().view({-1, action_shape}));
-    auto values = evaluate_result[0].view({num_steps, num_processes, 1});
+    //TODO: 11
+    auto values = evaluate_result[0].view({num_steps, num_processes, 11, 1});
     auto action_log_probs = evaluate_result[1].view(
         {num_steps, num_processes, 1});
 

@@ -86,8 +86,8 @@ int main(int argc, char *argv[]) {
     Envs::Res res;
     res = envs.init(argc, argv);
     int net_num = res.feature.at(0).size();
-    env_info->action_space_shape.emplace_back(net_num);
-    env_info->observation_space_shape.emplace_back(net_num * Router::Feature_idx::FEA_DIM);
+    env_info->action_space_shape.emplace_back(1);
+    env_info->observation_space_shape = {net_num, Router::Feature_idx::FEA_DIM};
     spdlog::info("Net num: {}, Feature dim: {}", net_num, Router::Feature_idx::FEA_DIM);
     spdlog::info("Action space: {} - [{}]", env_info->action_space_type, env_info->action_space_shape);
     spdlog::info("Observation space: {} - [{}]", env_info->observation_space_type, env_info->observation_space_shape);
@@ -107,11 +107,7 @@ int main(int argc, char *argv[]) {
 
     // model
     std::shared_ptr<NNBase> base;
-    if (env_info->observation_space_shape.size() == 1) {
-        base = std::make_shared<MlpBase>(env_info->observation_space_shape[0], recurrent, hidden_size);
-    } else {
-        base = std::make_shared<CnnBase>(env_info->observation_space_shape[0], recurrent, hidden_size);
-    }
+    base = std::make_shared<MlpBase>(env_info->observation_space_shape[1], recurrent, hidden_size);
     if (load_model){
         auto file_name = "base_" + model_name_prefix + ".pt";
         std::ifstream fin(file_name);
@@ -139,6 +135,7 @@ int main(int argc, char *argv[]) {
         }
     };
     policy->to(device);
+
     RolloutStorage storage(batch_size, num_envs, env_info->observation_space_shape, space, hidden_size, device);
     std::unique_ptr<Algorithm> algo;
     if (algorithm == "A2C") {
@@ -184,7 +181,7 @@ int main(int argc, char *argv[]) {
                 if (space.type == "Discrete") {
                     actions[i] = {actions_array[i]};
                 } else {
-                    for (int j = 0; j < env_info->action_space_shape[0]; j++) {
+                    for (int j = 0; j < net_num; j++) {
                         actions[i].push_back(actions_array[i * env_info->action_space_shape[0] + j]);
                     }
                 }
@@ -214,9 +211,6 @@ int main(int argc, char *argv[]) {
                 auto reward_tensor = torch::from_blob(raw_reward_vec.data(), {num_envs}, torch::kFloat);
                 returns = returns * discount_factor + reward_tensor;
                 returns_rms->update(returns);
-                reward_tensor = torch::clamp(reward_tensor / torch::sqrt(returns_rms->get_variance() + 1e-8),
-                                             -reward_clip_value,
-                                             reward_clip_value);
                 rewards = std::vector<float>(reward_tensor.data_ptr<float>(),
                                              reward_tensor.data_ptr<float>() + reward_tensor.numel());
                 real_rewards = flatten_vector(res.reward);
@@ -231,9 +225,6 @@ int main(int argc, char *argv[]) {
                 auto reward_tensor = torch::from_blob(raw_reward_vec.data(), {num_envs}, torch::kFloat);
                 returns = returns * discount_factor + reward_tensor;
                 returns_rms->update(returns);
-                reward_tensor = torch::clamp(reward_tensor / torch::sqrt(returns_rms->get_variance() + 1e-8),
-                                             -reward_clip_value,
-                                             reward_clip_value);
                 rewards = std::vector<float>(reward_tensor.data_ptr<float>(),
                                              reward_tensor.data_ptr<float>() + reward_tensor.numel());
                 real_rewards = flatten_vector(res.reward);
