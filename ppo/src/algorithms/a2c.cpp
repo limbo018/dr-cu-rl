@@ -61,8 +61,7 @@ std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts, float decay_level
         rollouts.get_hidden_states()[0].view({-1, policy->get_hidden_size()}),
         rollouts.get_masks().slice(0, 0, -1).view({-1, 1}),
         rollouts.get_actions().view({-1, action_shape}));
-    //TODO: 11
-    auto values = evaluate_result[0].view({num_steps, num_processes, 11, 1});
+    auto values = evaluate_result[0].view({num_steps, num_processes, -1, 1});
     auto action_log_probs = evaluate_result[1].view(
         {num_steps, num_processes, 1});
 

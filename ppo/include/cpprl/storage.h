@@ -25,8 +25,8 @@ class RolloutStorage
                    c10::ArrayRef<int64_t> obs_shape,
                    ActionSpace action_space,
                    int64_t hidden_state_size,
-                   torch::Device device);
-
+                   torch::Device device,
+                   int num_net);
     RolloutStorage(std::vector<RolloutStorage *> individual_storages, torch::Device device);
 
     void after_update();

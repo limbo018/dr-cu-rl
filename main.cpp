@@ -25,7 +25,7 @@ const float gae = 0.9;
 const float kl_target = 0.5;
 const float learning_rate = 1e-4;
 const int log_interval = 5;
-const int num_updates= 10e+5;
+const int num_updates = 10e+5;
 const int num_epoch = 3;
 const int num_mini_batch = 20;
 const float reward_clip_value = 100;  // Post scaling
@@ -52,7 +52,7 @@ struct InfoResponse {
 
 std::vector<float> flatten_vector(std::vector<float> const &input) { return input; }
 
-template<typename T>
+template <typename T>
 std::vector<float> flatten_vector(std::vector<std::vector<T>> const &input) {
     std::vector<float> output;
 
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
     // model
     std::shared_ptr<NNBase> base;
     base = std::make_shared<MlpBase>(env_info->observation_space_shape[1], recurrent, hidden_size);
-    if (load_model){
+    if (load_model) {
         auto file_name = "base_" + model_name_prefix + ".pt";
         std::ifstream fin(file_name);
         if (fin) {
@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
         // Without observation normalization
         policy = Policy(space, base, false);
     }
-    if (load_model){
+    if (load_model) {
         auto file_name = "policy_" + model_name_prefix + ".pt";
         std::ifstream fin(file_name);
         if (fin) {
@@ -136,7 +136,8 @@ int main(int argc, char *argv[]) {
     };
     policy->to(device);
 
-    RolloutStorage storage(batch_size, num_envs, env_info->observation_space_shape, space, hidden_size, device);
+    RolloutStorage storage(
+        batch_size, num_envs, env_info->observation_space_shape, space, hidden_size, device, net_num);
     std::unique_ptr<Algorithm> algo;
     if (algorithm == "A2C") {
         algo = std::make_unique<A2C>(policy, actor_loss_coef, value_loss_coef, entropy_coef, learning_rate);
@@ -172,7 +173,7 @@ int main(int argc, char *argv[]) {
             {
                 torch::NoGradGuard no_grad;
                 act_result = policy->act(
-                        storage.get_observations()[step], storage.get_hidden_states()[step], storage.get_masks()[step]);
+                    storage.get_observations()[step], storage.get_hidden_states()[step], storage.get_masks()[step]);
             }
             auto actions_tensor = act_result[1].cpu().to(torch::kFloat);
             float *actions_array = actions_tensor.data_ptr<float>();
@@ -191,17 +192,17 @@ int main(int argc, char *argv[]) {
             res = envs.step(actions);
             auto step_run_time = std::chrono::high_resolution_clock::now() - step_start_time;
             spdlog::debug("take a step, took {:03.2f}s",
-                         std::chrono::duration_cast<std::chrono::milliseconds>(step_run_time).count() / 1000.0);
+                          std::chrono::duration_cast<std::chrono::milliseconds>(step_run_time).count() / 1000.0);
             if (res.done.at(0)) {
                 auto reset_start_time = std::chrono::high_resolution_clock::now();
                 auto reset_res = envs.reset();
                 res.feature = reset_res.feature;
                 auto reset_run_time = std::chrono::high_resolution_clock::now() - reset_start_time;
                 spdlog::debug("reset, took {:03.2f}s",
-                             std::chrono::duration_cast<std::chrono::milliseconds>(reset_run_time).count() / 1000.0);
+                              std::chrono::duration_cast<std::chrono::milliseconds>(reset_run_time).count() / 1000.0);
             }
 
-                    std::vector<float> rewards;
+            std::vector<float> rewards;
             std::vector<float> real_rewards;
             std::vector<std::vector<bool>> dones_vec{num_envs};
             if (env_info->observation_space_shape.size() > 1) {
@@ -262,11 +263,10 @@ int main(int argc, char *argv[]) {
         {
             torch::NoGradGuard no_grad;
             next_value =
-                    policy
-                            ->get_values(
-                                    storage.get_observations()[-1], storage.get_hidden_states()[-1],
-                                    storage.get_masks()[-1])
-                            .detach();
+                policy
+                    ->get_values(
+                        storage.get_observations()[-1], storage.get_hidden_states()[-1], storage.get_masks()[-1])
+                    .detach();
         }
         storage.compute_returns(next_value, use_gae, discount_factor, gae);
 
@@ -283,18 +283,19 @@ int main(int argc, char *argv[]) {
                      std::chrono::duration_cast<std::chrono::seconds>(total_run_time).count(),
                      update,
                      std::chrono::duration_cast<std::chrono::milliseconds>(batch_run_time).count() / 1000.0,
-                     vios.at(0), vios.at(1), vios.at(2), vios.at(3),
-                     reward_to_print
-        );
+                     vios.at(0),
+                     vios.at(1),
+                     vios.at(2),
+                     vios.at(3),
+                     reward_to_print);
         if (update % log_interval == 0 && update > 0) {
-//            for (const auto &datum : update_data) {
-//                spdlog::info("{}: {}", datum.name, datum.value);
-//            }
+            //            for (const auto &datum : update_data) {
+            //                spdlog::info("{}: {}", datum.name, datum.value);
+            //            }
             if (save_model) {
                 torch::save(base, "base_" + model_name_prefix + ".pt");
                 torch::save(policy, "policy_" + model_name_prefix + ".pt");
             }
-
         }
     }
 }

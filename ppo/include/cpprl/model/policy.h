@@ -21,6 +21,7 @@ class PolicyImpl : public nn::Module
     std::shared_ptr<NNBase> base;
     ObservationNormalizer observation_normalizer;
     std::shared_ptr<OutputLayer> output_layer;
+    int _num_net;
 
     std::vector<torch::Tensor> forward_gru(torch::Tensor x,
                                            torch::Tensor hxs,
@@ -33,7 +34,7 @@ class PolicyImpl : public nn::Module
 
     std::vector<torch::Tensor> act(torch::Tensor inputs,
                                    torch::Tensor rnn_hxs,
-                                   torch::Tensor masks) const;
+                                   torch::Tensor masks) ;
     std::vector<torch::Tensor> evaluate_actions(torch::Tensor inputs,
                                                 torch::Tensor rnn_hxs,
                                                 torch::Tensor masks,

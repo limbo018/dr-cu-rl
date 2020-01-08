@@ -51,8 +51,9 @@ PolicyImpl::PolicyImpl(ActionSpace action_space,
 
 std::vector<torch::Tensor> PolicyImpl::act(torch::Tensor inputs,
                                            torch::Tensor rnn_hxs,
-                                           torch::Tensor masks) const
+                                           torch::Tensor masks)
 {
+    _num_net = inputs.size(1);
     if (observation_normalizer)
     {
         inputs = observation_normalizer->process_observation(inputs);
@@ -103,8 +104,7 @@ std::vector<torch::Tensor> PolicyImpl::evaluate_actions(torch::Tensor inputs,
     }
     else
     {
-        //TODO: 11
-        action_log_probs = dist->log_prob(actions).reshape({-1, 11}).sum(1, true);
+        action_log_probs = dist->log_prob(actions).reshape({-1, _num_net}).sum(1, true);
     }
 
     auto entropy = dist->entropy().mean();
