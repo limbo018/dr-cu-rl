@@ -31,7 +31,7 @@ RolloutStorage::RolloutStorage(int64_t num_steps,
     rewards = torch::zeros({num_steps, num_processes, 1}, torch::TensorOptions(device));
     value_predictions = torch::zeros({num_steps + 1, num_processes, num_net, 1}, torch::TensorOptions(device));
     returns = torch::zeros({num_steps + 1, num_processes, num_net, 1}, torch::TensorOptions(device));
-    action_log_probs = torch::zeros({num_steps, num_processes, 1}, torch::TensorOptions(device));
+    action_log_probs = torch::zeros({num_steps, num_processes, num_net, 1}, torch::TensorOptions(device));
     int num_actions;
     if (action_space.type == "Discrete")
     {

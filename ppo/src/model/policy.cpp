@@ -72,12 +72,12 @@ std::vector<torch::Tensor> PolicyImpl::act(torch::Tensor inputs,
     }
     else
     {
-        action_log_probs = dist->log_prob(action).sum(1, true);
+        action_log_probs = dist->log_prob(action).sum(-1, true);
     }
 
     return {base_output[0], // value
             action,
-            action_log_probs.reshape({1, 1}),
+            action_log_probs,
             base_output[2]}; // rnn_hxs
 }
 
@@ -104,7 +104,7 @@ std::vector<torch::Tensor> PolicyImpl::evaluate_actions(torch::Tensor inputs,
     }
     else
     {
-        action_log_probs = dist->log_prob(actions).reshape({-1, _num_net}).sum(1, true);
+        action_log_probs = dist->log_prob(actions).sum(-1, true);
     }
 
     auto entropy = dist->entropy().mean();

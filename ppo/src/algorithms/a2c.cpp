@@ -46,7 +46,7 @@ std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts, float decay_level
     obs_shape.at(0) = -1;
     auto action_shape = rollouts.get_actions().size(-1);
     auto rewards_shape = rollouts.get_rewards().sizes();
-    int num_steps = rewards_shape[0];
+//    int num_steps = rewards_shape[0];
     int num_processes = rewards_shape[1];
 
     // Update observation normalizer
@@ -61,9 +61,9 @@ std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts, float decay_level
         rollouts.get_hidden_states()[0].view({-1, policy->get_hidden_size()}),
         rollouts.get_masks().slice(0, 0, -1).view({-1, 1}),
         rollouts.get_actions().view({-1, action_shape}));
-    auto values = evaluate_result[0].view({num_steps, num_processes, -1, 1});
+    auto values = evaluate_result[0].view({-1, num_processes, 1});
     auto action_log_probs = evaluate_result[1].view(
-        {num_steps, num_processes, 1});
+        {-1, num_processes, 1});
 
     // Calculate advantages
     // Advantages aren't normalized (they are in PPO)
