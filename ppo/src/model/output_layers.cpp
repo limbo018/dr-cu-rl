@@ -54,7 +54,7 @@ NormalOutput::NormalOutput(unsigned int num_inputs,
 std::unique_ptr<Distribution> NormalOutput::forward(torch::Tensor x)
 {
     auto loc = linear_loc(x);
-    auto scale = scale_log.exp();
+    auto scale = torch::mul(scale_log.exp(), 0.1);
     return std::make_unique<Normal>(loc, scale);
 }
 

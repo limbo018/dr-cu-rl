@@ -38,6 +38,19 @@ MlpBase::MlpBase(unsigned int num_inputs,
     register_module("critic_linear", critic_linear);
 
     init_weights(actor->named_parameters(), sqrt(2.), 0);
+    NoGradGuard guard;
+    for (auto &para: actor->named_parameters()) {
+        if (para.key().find("weight") != std::string::npos) {
+            auto &weight = para.value();
+            for (int i = 0; i < weight.size(0); ++i) {
+                for (int j = 0; j < weight.size(1); ++j) {
+                    if(j != 1)
+                        weight[i][j] = 0;
+                }
+            }
+            break;
+        }
+    }
     init_weights(critic->named_parameters(), sqrt(2.), 0);
     init_weights(critic_linear->named_parameters(), sqrt(2.), 0);
 

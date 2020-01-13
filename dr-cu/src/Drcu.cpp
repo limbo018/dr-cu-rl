@@ -310,6 +310,7 @@ int Drcu::prepare() {
             else {
                 _features_norm.at(i).at(j) = -1;
             }
+            _features_norm.at(i).at(j) *= 100;
 
         }
     }
