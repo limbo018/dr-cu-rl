@@ -72,6 +72,8 @@ public:
 
     void init();
     void clear();
+    void stash();
+    void reset();
     void setUnitVioCost(double discount = 1.0);
 
     // Get unit cost
@@ -237,6 +239,7 @@ protected:
     // 3. wires with history violations
     // (layerIdx, trackIdx) -> all (crossPointRange, discountedUsage)
     vector<vector<boost::icl::interval_map<int, HistWire>>> histWireMap;
+    vector<vector<boost::icl::interval_map<int, HistWire>>> histWireMap_copy;
 
     // Vias
     // (layerIdx, trackIdx) -> all (crossPointIdx, netIdx)
@@ -250,6 +253,7 @@ protected:
     vector<vector<vector<std::pair<int, ViaData*>>>> poorViaMap;
     vector<bool> usePoorViaMap;
     vector<vector<std::unordered_map<int, HistUsageT>>> histViaMap;
+    vector<vector<std::unordered_map<int, HistUsageT>>> histViaMap_copy;
     std::array<double, 4> _vio_usage;
 };
 

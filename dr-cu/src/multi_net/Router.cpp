@@ -352,16 +352,14 @@ int Router::step() {
 }
 
 void Router::reset() {
-    unfinish();
-//    db::routeStat.clear();
-//    vector<int> netsToRoute = getNetsToRoute();
-//    ripup(netsToRoute);
-//    allNetStatus.resize(database.nets.size(), db::RouteStatus::FAIL_UNPROCESSED);
-    iter = 0;
-    db::setting.rrrIterLimit = 4;
     for (auto &e: _feature) {
         e.assign(Router::Feature_idx::FEA_DIM, 0);
     }
+    iter = 0;
+    vector<int> all_nets;
+    for (int i = 0; i < database.nets.size(); ++i)
+        all_nets.emplace_back(i);
+    ripup(all_nets);
 }
 
 void Router::init() {

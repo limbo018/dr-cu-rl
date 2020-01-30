@@ -43,6 +43,8 @@ public:
     // more route guide information
     vector<int> routeGuideVios;
     RTrees routeGuideRTrees;
+    vector<int> routeGuideVios_copy;
+    RTrees routeGuideRTrees_copy;
 
     // for initialization
     void initPinAccessBoxes(Rsyn::Pin rsynPin, RsynService& rsynService, vector<BoxOnLayer>& accessBoxes, const DBU libDBU);
@@ -56,6 +58,8 @@ public:
     vector<DefWireSegmentDscp> defWireSegments;
     void clearPostRouteResult();
     void clearResult();
+    void stash(); 
+    void reset(); 
 };
 
 class NetList {

@@ -7,3 +7,5 @@ toys/*
 !toys/ispd18_sample
 .pytest_cache/
 *.pyc
+*.txt
+*.sh

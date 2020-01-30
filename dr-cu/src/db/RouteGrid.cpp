@@ -102,6 +102,14 @@ void RouteGrid::clear() {
     usePoorViaMap.clear();
 }
 
+void RouteGrid::stash() {
+    histWireMap_copy = histWireMap;
+    histViaMap_copy = histViaMap;
+}    
+void RouteGrid::reset() {
+    histWireMap = histWireMap_copy;
+    histViaMap = histViaMap_copy;
+}
 void RouteGrid::setUnitVioCost(double discount) {
     if (setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         printlog("Set unit vio cost with discount of", discount);

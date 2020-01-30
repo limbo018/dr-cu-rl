@@ -10,16 +10,23 @@ void Drcu::init(int argc, char *short_format_argv[]) {
     database.init();
     db::setting.adapt();
     _router.init();
+    for (auto &net: database.nets) {
+        net.stash();
+    }
+    database.stash();
     prepare();
 }
 
 void Drcu::reset() {
-    close();
-    Rsyn::Session::checkInitialized(false, true);
     _router.reset();
     _step_cnt = 0;
     _rank_score.clear();
-    init(_argc, _short_format_argv);
+    _router.reset();
+    for (auto &net: database.nets) {
+        net.reset();
+    }
+    database.reset();
+    prepare();
 }
 
 int Drcu::feed_argv(int argc, char *short_format_argv[]) {
@@ -326,8 +333,8 @@ Drcu::Res Drcu::step(const vector<float>& action) {
             rank_score.emplace_back(action.at(i));
         }
     }
-    res.reward = - _router.route(rank_score) + 1988.59;
-    res.reward /= 1000.0;
+    res.reward = - _router.route(rank_score) + 366.5;
+    // res.reward /= 1000.0;
     if (_step_cnt < IRR_LIMIT) {
         _step_cnt++;
         if (prepare()) {
