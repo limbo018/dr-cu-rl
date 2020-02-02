@@ -203,8 +203,11 @@ void MazeRoute::getResult() {
                 // prep for the next loop
                 prevS = curS;
                 cur = cur->prev;
+                curS.reset();
+                cur.reset();
             }
         }
+        prevS.reset();
         for (const auto &v : curVisited) visited.insert(v);
     }
 
