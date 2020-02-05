@@ -100,10 +100,10 @@ int main(int argc, char *argv[]) {
     std::vector<double> observation_vec;
     if (env_info->observation_space_shape.size() > 1) {
         observation_vec = flatten_vector(res.feature);
-        observation = torch::from_blob(observation_vec.data(), observation_shape).to(device);
+        observation = torch::from_blob(observation_vec.data(), observation_shape, torch::kDouble).to(device);
     } else {
         observation_vec = flatten_vector(res.feature);
-        observation = torch::from_blob(observation_vec.data(), observation_shape).to(device);
+        observation = torch::from_blob(observation_vec.data(), observation_shape, torch::kDouble).to(device);
     }
 
     // model
@@ -208,7 +208,7 @@ int main(int argc, char *argv[]) {
             std::vector<std::vector<bool>> dones_vec{num_envs};
             if (env_info->observation_space_shape.size() > 1) {
                 observation_vec = flatten_vector(res.feature);
-                observation = torch::from_blob(observation_vec.data(), observation_shape).to(device);
+                observation = torch::from_blob(observation_vec.data(), observation_shape, torch::kDouble).to(device);
                 auto raw_reward_vec = flatten_vector(res.reward);
                 auto reward_tensor = torch::from_blob(raw_reward_vec.data(), {num_envs}, torch::kFloat);
                 returns = returns * discount_factor + reward_tensor;
@@ -222,7 +222,7 @@ int main(int argc, char *argv[]) {
 
             } else {
                 observation_vec = flatten_vector(res.feature);
-                observation = torch::from_blob(observation_vec.data(), observation_shape).to(device);
+                observation = torch::from_blob(observation_vec.data(), observation_shape, torch::kDouble).to(device);
                 auto raw_reward_vec = flatten_vector(res.reward);
                 auto reward_tensor = torch::from_blob(raw_reward_vec.data(), {num_envs}, torch::kFloat);
                 returns = returns * discount_factor + reward_tensor;

@@ -55,7 +55,7 @@ std::unique_ptr<Distribution> NormalOutput::forward(torch::Tensor x)
 {
     auto loc = linear_loc(x);
     auto scale = torch::mul(scale_log.exp(), _scale);
-    _scale *= 0.99;
+    _scale *= 0.999;
     return std::make_unique<Normal>(loc, scale);
 }
 
