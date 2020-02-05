@@ -10,12 +10,12 @@ public:
     void reset();
     void test(int argc, char* short_format_argv[]);
     struct Res{
-        vector<vector<float>> feature;
+        vector<vector<double>> feature;
         bool done = false;
         float reward = 0;
     };
-    Res step(const vector<float>& action);
-    vector<vector<float>> get_the_1st_observation();
+    Res step(const vector<double>& action);
+    vector<vector<double>> get_the_1st_observation();
 private:
     std::string _long_format_argv[13] = {"argv[0]",
                                         "-lef",
@@ -34,8 +34,8 @@ private:
     Router _router;
 //    vector<int> _nets_to_route;
     vector<vector<int>> _features;
-    vector<vector<float>> _features_norm;
-    vector<float> _rank_score;
+    vector<vector<double>> _features_norm;
+    vector<double> _rank_score;
     int _argc{0};
     char** _short_format_argv{nullptr};
     int _step_cnt{0};

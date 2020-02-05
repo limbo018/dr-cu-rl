@@ -47,6 +47,7 @@ class NormalOutput : public OutputLayer
   private:
     nn::Linear linear_loc;
     torch::Tensor scale_log;
+    double _scale{0.5};
 
   public:
     NormalOutput(unsigned int num_inputs, unsigned int num_outputs);

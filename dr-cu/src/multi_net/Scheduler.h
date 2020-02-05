@@ -7,7 +7,7 @@ class Scheduler {
 public:
     Scheduler(const vector<SingleNetRouter>& routersToExec) : routers(routersToExec){};
     vector<vector<int>>& schedule();
-    vector<vector<int>>& schedule(vector<float> rank_score);
+    vector<vector<int>>& schedule(vector<double> rank_score);
     vector<int> get_net_degree();
 
 private:

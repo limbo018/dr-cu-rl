@@ -12,7 +12,7 @@ public:
     vector<int> getNetsToRoute();
 
     vector<vector<int>> get_nets_feature();
-    double route(vector<float > rank_score);
+    double route(vector<double> rank_score);
     int prepare();
     enum Feature_idx{ROUTED=0, SIZE, DEGREE, NUM_RIP_UP, VIO_COST, WIRE_LENGTH, VIA, LAYER_BEGIN,LAYER_END=LAYER_BEGIN+9-1, FEA_DIM};
 private:

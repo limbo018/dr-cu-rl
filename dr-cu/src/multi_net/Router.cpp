@@ -454,7 +454,7 @@ int Router::prepare() {
     return 0;
 }
 
-double Router::route(vector<float> rank_score) {
+double Router::route(vector<double> rank_score) {
     // schedule
     if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Start multi-thread scheduling. There are " << _nets_to_route.size() << " nets to route." << std::endl;

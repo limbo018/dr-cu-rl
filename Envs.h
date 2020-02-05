@@ -7,13 +7,13 @@
 class Envs {
 public:
     struct Res{
-        vector<vector<vector<float>>> feature{NUM_ENVS};
+        vector<vector<vector<double>>> feature{NUM_ENVS};
         vector<bool> done;
         vector<float> reward;
     };
     Res reset();
-    vector<vector<float>> reset(int env_idx);
-    Res step(const std::vector<std::vector<float >>& actions);
+    vector<vector<double>> reset(int env_idx);
+    Res step(const std::vector<std::vector<double>>& actions);
     Res init(int argc, char* short_format_argv[]);
     std::array<double, 4> get_all_vio() const;
 private:

@@ -25,6 +25,7 @@ public:
 
     // on-grid route result
     vector<std::shared_ptr<GridSteiner>> gridTopo;
+    vector<std::shared_ptr<GridSteiner>> gridTopo_copy;
     void postOrderVisitGridTopo(const std::function<void(std::shared_ptr<GridSteiner>)>& visit) const;
 
     // print

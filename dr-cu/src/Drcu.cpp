@@ -308,9 +308,9 @@ int Drcu::prepare() {
     }
     for (int i = 0; i < _features.size(); ++i) {
         for (int j = 1; j < Router::Feature_idx::FEA_DIM; ++j) {
-            float val = _features.at(i).at(j);
+            double val = _features.at(i).at(j);
             if(max.at(j - 1) - min.at(j - 1)) {
-                val = (val - min.at(j - 1)) / static_cast<float>(max.at(j - 1) - min.at(j - 1));
+                val = (val - min.at(j - 1)) / static_cast<double>(max.at(j - 1) - min.at(j - 1));
                 val = val * 2 - 1;
                 _features_norm.at(i).at(j) = val;
             }
@@ -325,9 +325,9 @@ int Drcu::prepare() {
     return 0;
 }
 
-Drcu::Res Drcu::step(const vector<float>& action) {
+Drcu::Res Drcu::step(const vector<double>& action) {
     Res res;
-    vector<float> rank_score;
+    vector<double> rank_score;
     for (int i = 0; i < _features.size(); ++i) {
         if (_features.at(i).at(0) == 1) {
             rank_score.emplace_back(action.at(i));
@@ -350,7 +350,7 @@ Drcu::Res Drcu::step(const vector<float>& action) {
     return res;
 }
 
-vector<vector<float>> Drcu::get_the_1st_observation() {
+vector<vector<double>> Drcu::get_the_1st_observation() {
     _step_cnt++;
-    return vector<vector<float>>(_features_norm);
+    return vector<vector<double>>(_features_norm);
 }

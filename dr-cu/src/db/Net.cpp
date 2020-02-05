@@ -104,13 +104,13 @@ void Net::clearResult() {
 void Net::stash() {
     routeGuideVios_copy = (routeGuideVios);
     routeGuideRTrees_copy = (routeGuideRTrees);
-    // gridTopo_copy = move(gridTopo);
+    gridTopo_copy =gridTopo;
     
 }
 void Net::reset() {
     routeGuideVios = (routeGuideVios_copy);
     routeGuideRTrees = (routeGuideRTrees_copy);
-    // gridTopo = move(gridTopo_copy);
+    gridTopo = gridTopo_copy;
 }
 
 void Net::initPinAccessBoxes(Rsyn::Pin rsynPin, RsynService& rsynService, vector<BoxOnLayer>& accessBoxes, const DBU libDBU) {

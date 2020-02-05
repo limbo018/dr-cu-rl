@@ -118,7 +118,7 @@ vector<int> Scheduler::get_net_degree() {
     return vector<int>(degree);
 }
 
-vector<vector<int>> &Scheduler::schedule(vector<float> rank_score) {
+vector<vector<int>> &Scheduler::schedule(vector<double> rank_score) {
     // init assigned table
     vector<bool> assigned(routers.size(), false);
     for (int i = 0; i < routers.size(); i++) {

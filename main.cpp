@@ -51,10 +51,11 @@ struct InfoResponse {
 };
 
 std::vector<float> flatten_vector(std::vector<float> const &input) { return input; }
+std::vector<double> flatten_vector(std::vector<double> const &input) { return input; }
 
 template <typename T>
-std::vector<float> flatten_vector(std::vector<std::vector<T>> const &input) {
-    std::vector<float> output;
+std::vector<double> flatten_vector(std::vector<std::vector<T>> const &input) {
+    std::vector<double> output;
 
     for (auto const &element : input) {
         auto sub_vector = flatten_vector(element);
@@ -96,7 +97,7 @@ int main(int argc, char *argv[]) {
     auto observation_shape = env_info->observation_space_shape;
     observation_shape.insert(observation_shape.begin(), num_envs);
     torch::Tensor observation;
-    std::vector<float> observation_vec;
+    std::vector<double> observation_vec;
     if (env_info->observation_space_shape.size() > 1) {
         observation_vec = flatten_vector(res.feature);
         observation = torch::from_blob(observation_vec.data(), observation_shape).to(device);
@@ -175,9 +176,9 @@ int main(int argc, char *argv[]) {
                 act_result = policy->act(
                     storage.get_observations()[step], storage.get_hidden_states()[step], storage.get_masks()[step]);
             }
-            auto actions_tensor = act_result[1].cpu().to(torch::kFloat);
-            float *actions_array = actions_tensor.data_ptr<float>();
-            std::vector<std::vector<float>> actions(num_envs);
+            auto actions_tensor = act_result[1].cpu().to(torch::kDouble);
+            double *actions_array = actions_tensor.data_ptr<double>();
+            std::vector<std::vector<double>> actions(num_envs);
             for (int i = 0; i < num_envs; ++i) {
                 if (space.type == "Discrete") {
                     actions[i] = {actions_array[i]};

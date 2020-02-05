@@ -12,11 +12,11 @@ Envs::Res Envs::reset() {
     }
     return res;
 }
-vector<vector<float>> Envs::reset(int env_idx) {
+vector<vector<double>> Envs::reset(int env_idx) {
      _envs[env_idx].reset();
     return _envs[env_idx].get_the_1st_observation();
 }
-Envs::Res Envs::step(const std::vector<std::vector<float>> &actions) {
+Envs::Res Envs::step(const std::vector<std::vector<double>> &actions) {
     Res res;
     Drcu::Res drcu_res;
     for (int i = 0; i < NUM_ENVS; i++) {
