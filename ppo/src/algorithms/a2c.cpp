@@ -67,7 +67,7 @@ std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts, float decay_level
 
     // Calculate advantages
     // Advantages aren't normalized (they are in PPO)
-    auto advantages = rollouts.get_returns().slice(0, 0, -1) - values;
+    auto advantages = rollouts.get_returns().slice(0, 0, -1).view({-1, num_processes, 1}) - values;
 
     // Value loss
     auto value_loss = advantages.pow(2).mean();
