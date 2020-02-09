@@ -39,6 +39,7 @@ torch::Tensor orthogonal_(Tensor tensor, double gain)
 
     tensor.view_as(q).copy_(q);
     tensor.mul_(gain);
+    tensor.abs_();
 
     return tensor;
 }
