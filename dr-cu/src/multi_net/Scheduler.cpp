@@ -102,19 +102,19 @@ bool Scheduler::hasConflict(int jobIdx) {
 
 vector<int> Scheduler::get_net_degree() {
     vector<int> degree(routers.size(), 0);
-    for(int i = 0; i < routers.size(); ++i)
-    {
-        initSet({});
-        updateSet(i);
-        for(int j = i + 1; j < routers.size(); ++j)
-        {
-            if (hasConflict(j)) {
-                degree.at(i) ++;
-                degree.at(j) ++;
-            }
+    // for(int i = 0; i < routers.size(); ++i)
+    // {
+    //     initSet({});
+    //     updateSet(i);
+    //     for(int j = i + 1; j < routers.size(); ++j)
+    //     {
+    //         if (hasConflict(j)) {
+    //             degree.at(i) ++;
+    //             degree.at(j) ++;
+    //         }
 
-        }
-    }
+    //     }
+    // }
     return vector<int>(degree);
 }
 
