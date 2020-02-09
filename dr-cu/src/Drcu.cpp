@@ -292,39 +292,31 @@ int Drcu::prepare() {
     if (res) return res;
 
     _features = _router.get_nets_feature();
-
-    std::array<int, Router::Feature_idx::FEA_DIM - 1> min{};
-    std::array<int, Router::Feature_idx::FEA_DIM - 1> max{};
-    for (int i = 1; i < Router::Feature_idx::FEA_DIM; ++ i) {
-        min.at(i - 1) = _features.at(0).at(i);
-        max.at(i - 1) = _features.at(0).at(i);
-
-    }
-
-    for (auto feature : _features) {
-        for (int i = 1; i < Router::Feature_idx::FEA_DIM; ++i) {
-            max.at(i - 1) = std::max(feature.at(i), max.at(i - 1));
-            min.at(i - 1) = std::min(feature.at(i), min.at(i - 1));
-        }
-    }
     _features_norm.resize(_features.size());
     for (int i = 0; i < _features.size(); ++i) {
         _features_norm.at(i).resize(Router::Feature_idx::FEA_DIM);
-        _features_norm.at(i).at(0) = _features.at(i).at(0);
     }
-    for (int i = 0; i < _features.size(); ++i) {
-        for (int j = 1; j < Router::Feature_idx::FEA_DIM; ++j) {
-            double val = _features.at(i).at(j);
-            if(max.at(j - 1) - min.at(j - 1)) {
-                val = (val - min.at(j - 1)) / static_cast<double>(max.at(j - 1) - min.at(j - 1));
-                _features_norm.at(i).at(j) = val;
+
+    auto feature_mt = runJobsMT(_features.size(), [&](int fea_id) {
+        int min{_features.at(0).at(fea_id)};
+        int max{_features.at(0).at(fea_id)};
+
+        for (int i = 1; i < _features.size(); ++i) {
+            min = std::min(min, _features.at(i).at(fea_id));
+            max = std::max(max, _features.at(i).at(fea_id));
+        }
+
+        for (int i = 0; i < _features.size(); ++i) {
+            if (min != max) {
+                double norm = static_cast<double>(_features.at(i).at(fea_id) - min ) / static_cast<double>(max - min);
+                _features_norm.at(i).at(fea_id) = norm;
             }
             else {
-                _features_norm.at(i).at(j) = 0;
+                _features_norm.at(i).at(fea_id) = 0;
             }
-
         }
-    }
+
+    });
 
     return 0;
 }
