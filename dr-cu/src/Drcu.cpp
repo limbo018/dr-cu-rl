@@ -317,13 +317,11 @@ int Drcu::prepare() {
             double val = _features.at(i).at(j);
             if(max.at(j - 1) - min.at(j - 1)) {
                 val = (val - min.at(j - 1)) / static_cast<double>(max.at(j - 1) - min.at(j - 1));
-                val = val * 2 - 1;
                 _features_norm.at(i).at(j) = val;
             }
             else {
-                _features_norm.at(i).at(j) = -1;
+                _features_norm.at(i).at(j) = 0;
             }
-            _features_norm.at(i).at(j) *= 100;
 
         }
     }
