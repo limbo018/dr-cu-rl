@@ -39,7 +39,7 @@ private:
     int _argc{0};
     char** _short_format_argv{nullptr};
     int _step_cnt{0};
-    const int IRR_LIMIT{5};
+    int irr_limit{4};
 
 
     int feed_argv(int argc, char* short_format_argv[]);

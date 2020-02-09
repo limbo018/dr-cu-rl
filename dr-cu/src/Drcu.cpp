@@ -15,6 +15,12 @@ void Drcu::init(int argc, char *short_format_argv[]) {
     }
     database.stash();
     prepare();
+    if (database.nets.size() < 10000) {
+        ++irr_limit;
+    }
+    else if (database.nets.size() > 800000) {
+        --irr_limit;
+    }
 }
 
 void Drcu::reset() {
@@ -335,7 +341,7 @@ Drcu::Res Drcu::step(const vector<double>& action) {
     }
     res.reward = - _router.route(rank_score) + 366.5;
     // res.reward /= 1000.0;
-    if (_step_cnt < IRR_LIMIT) {
+    if (_step_cnt < irr_limit) {
         _step_cnt++;
         if (prepare()) {
             res.done = true;
