@@ -297,7 +297,7 @@ int Drcu::prepare() {
         _features_norm.at(i).resize(Router::Feature_idx::FEA_DIM);
     }
 
-    auto feature_mt = runJobsMT(_features.size(), [&](int fea_id) {
+    auto feature_mt = runJobsMT(Router::Feature_idx::FEA_DIM, [&](int fea_id) {
         int min{_features.at(0).at(fea_id)};
         int max{_features.at(0).at(fea_id)};
 
