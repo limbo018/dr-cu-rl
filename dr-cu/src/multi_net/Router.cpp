@@ -391,6 +391,10 @@ vector<vector<int>> Router::get_nets_feature() {
     Scheduler scheduler(_routers);
     vector<int> degree = scheduler.get_net_degree();
 
+    auto reset_mt = runJobsMT(_feature.size(), [&](int i) {
+        _feature.at(i).at(ROUTED) = 0;
+    });
+
     auto feature_mt = runJobsMT(_routers.size(), [&](int i) {
         auto net_id = _routers.at(i).dbNet.idx;
         _feature.at(net_id).at(ROUTED) = 1;

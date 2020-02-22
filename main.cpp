@@ -195,6 +195,8 @@ int main(int argc, char *argv[]) {
             spdlog::debug("take a step, took {:03.2f}s",
                           std::chrono::duration_cast<std::chrono::milliseconds>(step_run_time).count() / 1000.0);
             if (res.done.at(0)) {
+                vios = envs.get_all_vio();
+                spdlog::info("total score: {}, vios[{}, {}, {}, {}]", res.reward, vios[0], vios[1], vios[2], vios[3]);
                 auto reset_start_time = std::chrono::high_resolution_clock::now();
                 auto reset_res = envs.reset();
                 res.feature = reset_res.feature;

@@ -14,11 +14,11 @@ vector<vector<int>> &Scheduler::schedule() {
     for (int id = 0; id < routers.size(); ++id) {
         routerIds.push_back(id);
     }
-    if (db::setting.multiNetScheduleSortAll) {
-        std::sort(routerIds.begin(), routerIds.end(), [&](int lhs, int rhs) {
-            return routers[lhs].localNet.estimatedNumOfVertices > routers[rhs].localNet.estimatedNumOfVertices;
-        });
-    }
+   if (db::setting.multiNetScheduleSortAll) {
+       std::stable_sort(routerIds.begin(), routerIds.end(), [&](int lhs, int rhs) {
+           return routers[lhs].localNet.estimatedNumOfVertices > routers[rhs].localNet.estimatedNumOfVertices;
+       });
+   }
 
     if (db::setting.numThreads == 0) {
         // simple case
@@ -52,7 +52,7 @@ vector<vector<int>> &Scheduler::schedule() {
         // sort within batches by NumOfVertices
         if (db::setting.multiNetScheduleSort) {
             for (auto &batch : batches) {
-                std::sort(batch.begin(), batch.end(), [&](int lhs, int rhs) {
+                std::stable_sort(batch.begin(), batch.end(), [&](int lhs, int rhs) {
                     return routers[lhs].localNet.estimatedNumOfVertices > routers[rhs].localNet.estimatedNumOfVertices;
                 });
             }
@@ -133,7 +133,7 @@ vector<vector<int>> &Scheduler::schedule(vector<double> rank_score) {
         routerIds.push_back(id);
     }
     if (db::setting.multiNetScheduleSortAll) {
-        std::sort(routerIds.begin(), routerIds.end(), [&](int lhs, int rhs) {
+        std::stable_sort(routerIds.begin(), routerIds.end(), [&](int lhs, int rhs) {
             return rank_score.at(lhs) > rank_score.at(rhs) ;
         });
     }
@@ -170,7 +170,7 @@ vector<vector<int>> &Scheduler::schedule(vector<double> rank_score) {
         // sort within batches by NumOfVertices
         if (db::setting.multiNetScheduleSort) {
             for (auto &batch : batches) {
-                std::sort(batch.begin(), batch.end(), [&](int lhs, int rhs) {
+                std::stable_sort(batch.begin(), batch.end(), [&](int lhs, int rhs) {
                     return rank_score.at(lhs) > rank_score.at(rhs);
                 });
             }
