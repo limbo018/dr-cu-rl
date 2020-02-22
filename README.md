@@ -9,7 +9,7 @@ unzip libtorch*.zip
 
 You can also click [here](https://pytorch.org/get-started/locally) to download other versions based on your gcc and cuda.
 
-* `benchmakrs` (The benchmarks can be downloaded from the hompage of ISPD'18 Contest)
+* `benchmakrs` (The benchmarks can be downloaded from the hompage of [ISPD'18 Contest](http://www.ispd.cc/contests/18/#benchmarks))
 * `Boost` (I am using version 1.2, other versions have not been tested)
 * `gcc`
 * `cmake`
