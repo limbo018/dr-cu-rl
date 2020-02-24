@@ -14,12 +14,6 @@ set(SPDLOG_DIR ${LIB_DIR}/spdlog)
 set(ZMQ_DIR ${LIB_DIR}/libzmq)
 
 find_package(pybind11 REQUIRED)
-#set(PYBIND11_INCLUDE_DIR /home/yibo/anaconda3/lib/python3.7/site-packages/torch/lib/include)
-
-#find_package(Python)
-#set(Python_INCLUDE_DIRS /home/yibo/anaconda3/include/python3.7m)
-#message(STATUS "Python_FOUND = ${Python_FOUND}")
-#message(STATUS "Python_INCLUDE_DIRS = ${Python_INCLUDE_DIRS}")
 
 # Torch
 set(Torch_CMAKE_DIR ${LIB_DIR}/libtorch/share/cmake)
