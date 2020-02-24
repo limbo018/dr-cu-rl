@@ -6,9 +6,9 @@
 
 class Drcu {
 public:
-    void init(int argc, char* short_format_argv[]);
+    void init(std::vector<std::string> const& argv);
     void reset();
-    void test(int argc, char* short_format_argv[]);
+    void test(std::vector<std::string> const& argv);
     struct Res{
         vector<vector<double>> feature;
         bool done = false;
@@ -17,7 +17,7 @@ public:
     Res step(const vector<double>& action);
     vector<vector<double>> get_the_1st_observation();
 private:
-    std::string _long_format_argv[13] = {"argv[0]",
+    std::vector<std::string> _long_format_argv = {"argv[0]",
                                         "-lef",
                                         "../dr-cu/toys/ispd18_sample/ispd18_sample.input.lef",
                                         "-def",
@@ -37,13 +37,13 @@ private:
     vector<vector<double>> _features_norm;
     vector<double> _rank_score;
     int _argc{0};
-    char** _short_format_argv{nullptr};
+    std::vector<std::string> _short_format_argv; 
     int _step_cnt{0};
     int irr_limit{4};
 
 
-    int feed_argv(int argc, char* short_format_argv[]);
-    void convert_argv_format(char* short_format_argv[]);
+    int feed_argv(std::vector<std::string> const& short_format_argv);
+    void convert_argv_format(std::vector<std::string> const& short_format_argv);
     void init_ispd_flow();
     void close();
     int prepare();

@@ -29,8 +29,12 @@ Envs::Res Envs::step(const std::vector<std::vector<double>> &actions) {
 }
 Envs::Res Envs::init(int argc, char **short_format_argv) {
     Res res;
+    std::vector<std::string> argv (argc); 
+    for (int i = 0; i < argc; ++i) {
+        argv[i] = short_format_argv[i]; 
+    }
     for (int i = 0; i < NUM_ENVS; i++) {
-        _envs[i].init(argc, short_format_argv);
+        _envs[i].init(argv);
 //        for(auto e: _envs.at(i).get_the_1st_observation()){
 //            res.feature.at(i).emplace_back(static_cast<float>(e));
 //        }

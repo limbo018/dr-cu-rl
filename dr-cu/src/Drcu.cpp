@@ -1,10 +1,10 @@
 #include "Drcu.h"
 
-void Drcu::init(int argc, char *short_format_argv[]) {
+void Drcu::init(std::vector<std::string> const& argv) {
     Rsyn::Session::init();
-    _argc = argc;
-    _short_format_argv = short_format_argv;
-    feed_argv(_argc, _short_format_argv);
+    _argc = argv.size();
+    _short_format_argv = argv; 
+    feed_argv(_short_format_argv);
     db::setting.makeItSilent();
     init_ispd_flow();
     database.init();
@@ -35,21 +35,35 @@ void Drcu::reset() {
     prepare();
 }
 
-int Drcu::feed_argv(int argc, char *short_format_argv[]) {
+int Drcu::feed_argv(std::vector<std::string> const& short_format_argv) {
+    int argc = short_format_argv.size();
     char *argv[13];
-    _long_format_argv[0] = short_format_argv[0];
+    _long_format_argv[0] = short_format_argv.at(0);
     if (argc == 2) {
         for (int i = 0; i < 13; ++i) {
-            argv[i] = const_cast<char *>(_long_format_argv[i].c_str());
+            // Yibo: need to copy from string 
+            argv[i] = new char [_long_format_argv.at(i).size() + 1];
+            strncpy(argv[i], _long_format_argv.at(i).c_str(), _long_format_argv.at(i).size());
+            argv[i][_long_format_argv.at(i).size()] = '\0';
         }
     } else if (argc == 3) {
         convert_argv_format(short_format_argv);
         for (int i = 0; i < 13; ++i) {
-            argv[i] = const_cast<char *>(_long_format_argv[i].c_str());
+            // Yibo: need to copy from string 
+            argv[i] = new char [_long_format_argv.at(i).size() + 1];
+            strncpy(argv[i], _long_format_argv.at(i).c_str(), _long_format_argv.at(i).size());
+            argv[i][_long_format_argv.at(i).size()] = '\0';
         }
     } else if (argc == 13){
         for (int i = 0; i < 13; ++i) {
-            argv[i] = const_cast<char *>(short_format_argv[i]);
+            // Yibo: need to copy from string 
+            argv[i] = new char [short_format_argv.at(i).size() + 1];
+            strncpy(argv[i], short_format_argv.at(i).c_str(), short_format_argv.at(i).size());
+            argv[i][short_format_argv.at(i).size()] = '\0';
+        }
+    } else {
+        for (int i = 0; i < 13; ++i) {
+            argv[i] = nullptr; 
         }
     }
 
@@ -65,6 +79,7 @@ int Drcu::feed_argv(int argc, char *short_format_argv[]) {
     }
     std::cout << std::boolalpha;  // set std::boolalpha to std::cout
 
+    int ret = 0; 
     try {
         using namespace boost::program_options;
         options_description desc{"Options"};
@@ -104,57 +119,67 @@ int Drcu::feed_argv(int argc, char *short_format_argv[]) {
                   .run(),
               _vm);
         notify(_vm);
+
         if (_vm.count("help")) {
             std::cout << desc << std::endl;
-            return 0;
-        }
-        for (const auto &option : desc.options()) {
-            if (db::setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
-                if (_vm.count(option->long_name())) {
-                    std::string name = option->description().empty() ? option->long_name() : option->description();
-                    log() << std::left << std::setw(18) << name << ": ";
-                    const auto &value = _vm.at(option->long_name()).value();
-                    if (auto v = boost::any_cast<double>(&value)) {
-                        std::cout << *v;
-                    } else if (auto v = boost::any_cast<int>(&value)) {
-                        std::cout << *v;
-                    } else if (auto v = boost::any_cast<std::string>(&value)) {
-                        std::cout << *v;
-                    } else if (auto v = boost::any_cast<bool>(&value)) {
-                        std::cout << *v;
-                    } else {
-                        std::cout << "unresolved type";
+            ret = 0; 
+        } else {
+            for (const auto &option : desc.options()) {
+                if (db::setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+                    if (_vm.count(option->long_name())) {
+                        std::string name = option->description().empty() ? option->long_name() : option->description();
+                        log() << std::left << std::setw(18) << name << ": ";
+                        const auto &value = _vm.at(option->long_name()).value();
+                        if (auto v = boost::any_cast<double>(&value)) {
+                            std::cout << *v;
+                        } else if (auto v = boost::any_cast<int>(&value)) {
+                            std::cout << *v;
+                        } else if (auto v = boost::any_cast<std::string>(&value)) {
+                            std::cout << *v;
+                        } else if (auto v = boost::any_cast<bool>(&value)) {
+                            std::cout << *v;
+                        } else {
+                            std::cout << "unresolved type";
+                        }
+                        std::cout << std::endl;
                     }
-                    std::cout << std::endl;
                 }
             }
         }
     } catch (const boost::program_options::error &e) {
         printlog(e.what());
-        return 1;
+        ret = 1; 
     }
-    return 0;
+
+    // Yibo: recycle argv 
+    for (int i = 0; i < 13; ++i) {
+        if (argv[i]) {
+            delete [] argv[i];
+        }
+    }
+
+    return ret;
 }
 
-void Drcu::convert_argv_format(char *short_format_argv[]) {
-    std::string year = short_format_argv[1];
-    std::string test_id = short_format_argv[2];
+void Drcu::convert_argv_format(std::vector<std::string> const& short_format_argv) {
+    std::string year = short_format_argv.at(1);
+    std::string test_id = short_format_argv.at(2);
     std::string input_file_name =
         "../dr-cu/toys/ispd" + year + "_test" + test_id + "/ispd" + year + "_test" + test_id + ".input";
 
-    _long_format_argv[0] = short_format_argv[0];
-    _long_format_argv[1] = "-lef";
-    _long_format_argv[2] = input_file_name + ".lef";
-    _long_format_argv[3] = "-def";
-    _long_format_argv[4] = input_file_name + ".def";
-    _long_format_argv[5] = "-guide";
-    _long_format_argv[6] = input_file_name + ".guide";
-    _long_format_argv[7] = "-output";
-    _long_format_argv[8] = "ispd" + year + "_test" + test_id + ".solution.def";
-    _long_format_argv[9] = "-threads";
-    _long_format_argv[10] = "8";
-    _long_format_argv[11] = "-tat";
-    _long_format_argv[12] = "2000000000";
+    _long_format_argv.at(0) = short_format_argv.at(0);
+    _long_format_argv.at(1) = "-lef";
+    _long_format_argv.at(2) = input_file_name + ".lef";
+    _long_format_argv.at(3) = "-def";
+    _long_format_argv.at(4) = input_file_name + ".def";
+    _long_format_argv.at(5) = "-guide";
+    _long_format_argv.at(6) = input_file_name + ".guide";
+    _long_format_argv.at(7) = "-output";
+    _long_format_argv.at(8) = "ispd" + year + "_test" + test_id + ".solution.def";
+    _long_format_argv.at(9) = "-threads";
+    _long_format_argv.at(10) = "8";
+    _long_format_argv.at(11) = "-tat";
+    _long_format_argv.at(12) = "2000000000";
 }
 
 void Drcu::init_ispd_flow() {
@@ -255,10 +280,10 @@ void Drcu::init_ispd_flow() {
     }
 }
 
-void Drcu::test(int argc, char *short_format_argv[]) {
+void Drcu::test(std::vector<std::string> const& argv) {
     float action{0};
     Res res;
-    init(argc, short_format_argv);
+    init(argv);
 
     res.feature = get_the_1st_observation();
 
