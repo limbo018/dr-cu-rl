@@ -16,6 +16,7 @@ public:
     };
     Res step(const vector<double>& action);
     vector<vector<double>> get_the_1st_observation();
+    std::array<double, 4> get_all_vio() const;
 private:
     std::vector<std::string> _long_format_argv = {"argv[0]",
                                         "-lef",

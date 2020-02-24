@@ -46,5 +46,5 @@ Envs::Res Envs::init(int argc, char **short_format_argv) {
 }
 
 std::array<double, 4> Envs::get_all_vio() const {
-    return std::array<double, 4>(database.get_all_vio());
+    return _envs[0].get_all_vio();
 }

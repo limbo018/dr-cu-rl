@@ -375,3 +375,12 @@ vector<vector<double>> Drcu::get_the_1st_observation() {
     _step_cnt++;
     return vector<vector<double>>(_features_norm);
 }
+
+std::array<double, 4> Drcu::get_all_vio() const {
+    auto ret = std::array<double, 4>(database.get_all_vio());
+    //for (auto v : ret) {
+    //    std::cout << v << " ";
+    //}
+    //std::cout << "\n";
+    return ret; 
+}
