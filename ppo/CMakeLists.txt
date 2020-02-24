@@ -7,7 +7,7 @@ project(CppRl
 
 # Project-wide properties
 set(CMAKE_CXX_STANDARD 17)
-set(Torch_DIR /home/quto/Repo/libtorch/share/cmake/Torch)
+#set(Torch_DIR /home/quto/Repo/libtorch/share/cmake/Torch)
 # set(Torch_DIR /home/quto/Packages/libtorch_precxx11/share/cmake/Torch)
 # Cppcheck
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
