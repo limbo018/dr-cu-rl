@@ -1,6 +1,6 @@
 #include "PinTapConnector.h"
 
-db::RouteStatus PinTapConnector::run() {
+db::RouteStatus PinTapConnector::run(db::Database const& database) {
     // 1 Get bestBox
     auto tapXY = database.getLoc(tap);
     db::BoxOnLayer bestBox;
@@ -44,7 +44,7 @@ db::RouteStatus PinTapConnector::run() {
     // 4 Get bestLink
     bestVio = std::numeric_limits<int>::max();
     for (auto &candidateLink : candidateLinks) {
-        int vio = getLinkPinSpaceVio(candidateLink, tap.layerIdx);
+        int vio = getLinkPinSpaceVio(database, candidateLink, tap.layerIdx);
         if (vio < bestVio) {
             bestLink = move(candidateLink);
             bestVio = vio;
@@ -80,10 +80,10 @@ vector<utils::SegmentT<DBU>> PinTapConnector::getLinkFromPts(const vector<utils:
     return link;
 }
 
-int PinTapConnector::getLinkPinSpaceVio(const vector<utils::SegmentT<DBU>> &link, int layerIdx) {
+int PinTapConnector::getLinkPinSpaceVio(db::Database const& database, const vector<utils::SegmentT<DBU>> &link, int layerIdx) {
     int numVio = 0;
     for (const auto &linkSeg : link) {
-        auto linkMetal = getLinkMetal(linkSeg, layerIdx);
+        auto linkMetal = getLinkMetal(database, linkSeg, layerIdx);
         numVio += database.getFixedMetalVio({layerIdx, linkMetal}, dbNet.idx);
     }
     return numVio;
@@ -127,7 +127,7 @@ db::RouteStatus PinTapConnector::getBestPinAccessBox(const utils::PointT<DBU> &t
     return db::RouteStatus::SUCC_CONN_EXT_PIN;
 }
 
-utils::BoxT<DBU> PinTapConnector::getLinkMetal(const utils::SegmentT<DBU> &link, int layerIdx) {
+utils::BoxT<DBU> PinTapConnector::getLinkMetal(db::Database const& database, const utils::SegmentT<DBU> &link, int layerIdx) {
     utils::BoxT<DBU> box(link.x, link.y);  // copy
     int dir = (box[0].range() == 0) ? 0 : 1;
     if (box[1 - dir].low > box[1 - dir].high) {

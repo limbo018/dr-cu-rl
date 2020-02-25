@@ -1,6 +1,6 @@
 #include "RouteGuideGraph.h"
 
-void RouteGuideGraph::initConn(const vector<vector<db::GridBoxOnLayer>>& pinAccessBoxes,
+void RouteGuideGraph::initConn(db::Database& database, const vector<vector<db::GridBoxOnLayer>>& pinAccessBoxes,
                                const vector<db::GridBoxOnLayer>& routeGuides) {
     pinGuideConn.clear();
     pinGuideConn.resize(pinAccessBoxes.size());

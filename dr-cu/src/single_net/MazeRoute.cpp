@@ -1,5 +1,6 @@
 #include "MazeRoute.h"
 #include "UpdateDB.h"
+#include "db/Database.h"
 
 ostream &operator<<(ostream &os, const Solution &sol) {
     os << "cost=" << sol.cost << ", len=" << sol.len << ", vertex=" << sol.vertex
@@ -7,27 +8,27 @@ ostream &operator<<(ostream &os, const Solution &sol) {
     return os;
 }
 
-db::RouteStatus MazeRoute::run() {
-    GridGraphBuilder graphBuilder(localNet, graph);
-    graphBuilder.run();
+db::RouteStatus MazeRoute::run(db::Database& database) {
+    GridGraphBuilder graphBuilder(database, localNet, graph);
+    graphBuilder.run(database);
 
     vertexCostUBs.assign(graph.getNodeNum(), std::numeric_limits<db::CostT>::max());
     // vertexCostLBs.assign(graph.getNodeNum(), 0);
     pinSols.assign(localNet.numOfPins(), nullptr);
     const int startPin = 0;
 
-    auto status = route(startPin);
+    auto status = route(database, startPin);
     if (!db::isSucc(status)) {
         return status;
     }
 
-    getResult();
+    getResult(database);
 
-    db::routeStat.increment(db::RouteStage::MAZE, status);
+    database.routeStat().increment(db::RouteStage::MAZE, status);
     return status;
 }
 
-db::RouteStatus MazeRoute::route(int startPin) {
+db::RouteStatus MazeRoute::route(db::Database const& database, int startPin) {
     // define std::priority_queue
     auto solComp = [](const std::shared_ptr<Solution> &lhs, const std::shared_ptr<Solution> &rhs) {
         return rhs->cost < lhs->cost || (rhs->cost == lhs->cost && rhs->costUB < lhs->costUB);
@@ -137,7 +138,7 @@ db::RouteStatus MazeRoute::route(int startPin) {
         }
 
         if (!dstVertex) {
-            printWarnMsg(db::RouteStatus::FAIL_DISCONNECTED_GRID_GRAPH, localNet.dbNet);
+            printWarnMsg(database, db::RouteStatus::FAIL_DISCONNECTED_GRID_GRAPH, localNet.dbNet);
             return db::RouteStatus::FAIL_DISCONNECTED_GRID_GRAPH;
         }
 
@@ -168,7 +169,7 @@ db::RouteStatus MazeRoute::route(int startPin) {
     return db::RouteStatus::SUCC_NORMAL;
 }
 
-void MazeRoute::getResult() {
+void MazeRoute::getResult(db::Database const& database) {
     std::unordered_map<int, std::shared_ptr<db::GridSteiner>> visited;
 
     // back track from pin to source
@@ -191,7 +192,7 @@ void MazeRoute::getResult() {
                 if (prevS) {
                     db::GridSteiner::setParent(prevS, curS);
                 }
-                if (curVisited.find(cur->vertex) != curVisited.end() && db::setting.singleNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+                if (curVisited.find(cur->vertex) != curVisited.end() && database.setting().singleNetVerbose >= +db::VerboseLevelT::MIDDLE) {
                     printlog("Warning: self loop found in a path for net", localNet.getName(), "for pin", p);
                 }
                 curVisited.emplace(cur->vertex, curS);

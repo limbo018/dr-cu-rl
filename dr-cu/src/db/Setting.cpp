@@ -9,7 +9,7 @@ void Setting::makeItSilent() {
     dbVerbose = VerboseLevelT::LOW;
 }
 
-void Setting::adapt() {
+void Setting::adapt(Database const& database) {
     if (database.nets.size() < 10000) {
         ++rrrIterLimit;
     }
@@ -18,12 +18,10 @@ void Setting::adapt() {
     }
 }
 
-Setting setting;
-
-void RrrIterSetting::update(int iter) {
+void RrrIterSetting::update(Database const& database, int iter) {
     if (iter == 0) {
-        defaultGuideExpand = setting.defaultGuideExpand;
-        wrongWayPointDensity = setting.wrongWayPointDensity;
+        defaultGuideExpand = database.setting().defaultGuideExpand;
+        wrongWayPointDensity = database.setting().wrongWayPointDensity;
         addDiffLayerGuides = false;
     } else {
         defaultGuideExpand += iter * 2;
@@ -33,7 +31,7 @@ void RrrIterSetting::update(int iter) {
             addDiffLayerGuides = true;
         }
     }
-    converMinAreaToOtherVio = ((iter + 1) < setting.rrrIterLimit);
+    converMinAreaToOtherVio = ((iter + 1) < database.setting().rrrIterLimit);
 }
 
 void RrrIterSetting::print() const {
@@ -41,7 +39,5 @@ void RrrIterSetting::print() const {
     printlog("wrongWayPointDensity =", wrongWayPointDensity);
     printlog("addDiffLayerGuides =", addDiffLayerGuides);
 }
-
-RrrIterSetting rrrIterSetting;
 
 }  // namespace db

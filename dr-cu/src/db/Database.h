@@ -34,8 +34,18 @@ public:
     // TODO: better way to differetiate same-layer and diff-layer girdPinAccessBoxes
     void getGridPinAccessBoxes(const Net& net, vector<vector<db::GridBoxOnLayer>>& gridPinAccessBoxes) const;
 
+    Setting const& setting() const {return _setting;}
+    Setting& setting() {return _setting;}
+    RrrIterSetting const& rrrIterSetting() const {return _rrrIterSetting;}
+    RrrIterSetting& rrrIterSetting() {return _rrrIterSetting;}
+    RouteStat const& routeStat() const {return _routeStat;}
+    RouteStat& routeStat() {return _routeStat;}
+
 private:
     RsynService rsynService;
+    Setting _setting; 
+    RrrIterSetting _rrrIterSetting; 
+    RouteStat _routeStat; 
 
     // mark pin and obstacle occupancy on RouteGrid
     void markPinAndObsOccupancy();
@@ -53,8 +63,6 @@ private:
 };
 
 }  //   namespace db
-
-extern db::Database database;
 
 namespace std {
 
@@ -74,4 +82,4 @@ struct hash<std::tuple<t0, t1, t2>> {
 
 }  // namespace std
 
-MTStat runJobsMT(int numJobs, const std::function<void(int)>& handle);
+MTStat runJobsMT(db::Database const& database, int numJobs, const std::function<void(int)>& handle);

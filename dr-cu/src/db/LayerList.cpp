@@ -1,10 +1,11 @@
 #include <fstream>
 
 #include "LayerList.h"
+#include "Database.h"
 
 namespace db {
 
-void LayerList::init() {
+void LayerList::init(Database const& database) {
     const Rsyn::Session session;
     Rsyn::PhysicalDesign physicalDesign =
         static_cast<Rsyn::PhysicalService*>(session.getService("rsyn.physical"))->getPhysicalDesign();
@@ -58,7 +59,7 @@ void LayerList::init() {
 
     cutLayers.clear();
     for (unsigned i = 0; i != rsynCutLayers.size(); ++i) {
-        cutLayers.emplace_back(rsynCutLayers[i], rsynVias[i], layers[i].direction, layers[i + 1].direction, libDBU);
+        cutLayers.emplace_back(database, rsynCutLayers[i], rsynVias[i], layers[i].direction, layers[i + 1].direction, libDBU);
     }
 
     // via area equivalent length (conservative)
@@ -294,7 +295,7 @@ GridBoxOnLayer LayerList::getLower(const GridBoxOnLayer& cur) const {
         layers[cur.layerIdx].getLowerCrossPointRange(cur.trackRange));
 }
 
-ViaBox LayerList::getViaBoxBetween(const BoxOnLayer& lower, const BoxOnLayer& upper) {
+ViaBox LayerList::getViaBoxBetween(const BoxOnLayer& lower, const BoxOnLayer& upper) const {
     assert((lower.layerIdx + 1) == upper.layerIdx);
     auto box2d = lower.IntersectWith(upper);
     auto lowerGridBoxTmp = rangeSearch({lower.layerIdx, box2d});

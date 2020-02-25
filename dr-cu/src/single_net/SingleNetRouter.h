@@ -14,7 +14,7 @@ public:
 
     SingleNetRouter(db::Net& dbNet);
 
-    void preRoute();
-    void mazeRoute();
-    void commitNetToDB();
+    void preRoute(db::Database& database);
+    void mazeRoute(db::Database& database);
+    void commitNetToDB(db::Database& database);
 };

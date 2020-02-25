@@ -1,20 +1,21 @@
 #include "PostMazeRoute.h"
+#include "db/Database.h"
 
-void PostMazeRoute::run() {
-    removeTrackSwitchWithVio();
-    extendMinAreaWires();
+void PostMazeRoute::run(db::Database& database) {
+    removeTrackSwitchWithVio(database);
+    extendMinAreaWires(database);
 }
 
-void PostMazeRoute::run2() {
+void PostMazeRoute::run2(db::Database& database) {
     net.postOrderVisitGridTopo([&](std::shared_ptr<db::GridSteiner> node) {
-        if (node->extWireSeg && database.getEdgeVioCost(*(node->extWireSeg), net.idx, false)) {
+        if (node->extWireSeg && database.getEdgeVioCost(database, *(node->extWireSeg), net.idx, false)) {
             node->extWireSeg.reset();
         }
     });
-    extendMinAreaWires();
+    extendMinAreaWires(database);
 }
 
-void PostMazeRoute::removeTrackSwitchWithVio() {
+void PostMazeRoute::removeTrackSwitchWithVio(db::Database& database) {
     // 1. Track switch around pin
     // handle root/leaf pin taps only for simplicity (TODO: generalize)
     // TODO: consider via connecting to lower metal layers
@@ -52,7 +53,7 @@ void PostMazeRoute::removeTrackSwitchWithVio() {
                 const unsigned xSize = viaCut.size() / 2;
                 const unsigned ySize = viaCut[0].size() / 2;
                 if (lowerDiff <= xSize && upperDiff <= ySize && viaCut[lowerDiff + xSize][upperDiff + ySize]) {
-                    db::routeStat.increment(db::RouteStage::POST_MAZE, db::MiscRouteEvent::REMOVE_TRACK_SWITCH_PIN, 1);
+                    database.routeStat().increment(db::RouteStage::POST_MAZE, db::MiscRouteEvent::REMOVE_TRACK_SWITCH_PIN, 1);
                     // remove tapI, graft neighI to neighJ
                     db::GridSteiner::resetParent(neighI);
                     if (tapI->trackIdx == tapJ->trackIdx || tapI->crossPointIdx == tapJ->crossPointIdx) {
@@ -89,7 +90,7 @@ void PostMazeRoute::removeTrackSwitchWithVio() {
                                        ? database.getCutLayer(node->layerIdx).viaMetal().size() / 2
                                        : database.getCutLayer(c->layerIdx).viaMetal()[0].size() / 2;
                         if (abs(node->trackIdx - ccc->trackIdx) <= size) {
-                            db::routeStat.increment(
+                            database.routeStat().increment(
                                 db::RouteStage::POST_MAZE, db::MiscRouteEvent::REMOVE_TRACK_SWITCH_NORMAL, 1);
                             if (c->children.size() > 1 || c->pinIdx >= 0 || cc->children.size() > 1 ||
                                 cc->pinIdx >= 0) {
@@ -185,6 +186,7 @@ void PostMazeRoute::removeTrackSwitchWithVio() {
                 if (!ccc) continue;
                 const int crossPointIdx = abs(nodeDCP) <= abs(ccDCP) ? node->crossPointIdx : ccc->crossPointIdx;
                 if (database.getWrongWayWireSegmentVioCost(
+                        database, 
                         {node->layerIdx,
                          {std::min(node->trackIdx, ccc->trackIdx) + 1, std::max(node->trackIdx, ccc->trackIdx) - 1},
                          crossPointIdx},
@@ -192,6 +194,7 @@ void PostMazeRoute::removeTrackSwitchWithVio() {
                         false) ||
                     s && s != c && s != cc &&
                         database.getWireSegmentVioCost(
+                            database, 
                             {s->layerIdx,
                              s->trackIdx,
                              {std::min(crossPointIdx, s->crossPointIdx), std::max(crossPointIdx, s->crossPointIdx)}},
@@ -200,7 +203,7 @@ void PostMazeRoute::removeTrackSwitchWithVio() {
                     //  FIXME: should be `continue`
                     return;
                 }
-                db::routeStat.increment(
+                database.routeStat().increment(
                     db::RouteStage::POST_MAZE, db::MiscRouteEvent::REMOVE_TRACK_SWITCH_HORSESHOE, 1);
                 db::GridSteiner::resetParent(c);
                 db::GridSteiner::resetParent(cc);
@@ -308,9 +311,10 @@ void PostMazeRoute::removeTrackSwitchWithVio() {
                 }
             }
             if (database.getWrongWayWireSegmentVioCost(
+                    database, 
                     {node->layerIdx, {minTrackIdx + 1, maxTrackIdx - 1}, steinerCrossPointIdx}, net.idx, false) ||
                 trunkCrossPointIdx != INT_MIN && trunkCrossPointIdx != INT_MAX &&
-                    database.getWireSegmentVioCost({node->layerIdx,
+                    database.getWireSegmentVioCost(database, {node->layerIdx,
                                                     node->trackIdx,
                                                     {std::min(steinerCrossPointIdx, node->crossPointIdx),
                                                      std::max(steinerCrossPointIdx, node->crossPointIdx)}},
@@ -318,7 +322,7 @@ void PostMazeRoute::removeTrackSwitchWithVio() {
                                                    false)) {
                 return;
             }
-            db::routeStat.increment(db::RouteStage::POST_MAZE, db::MiscRouteEvent::REMOVE_TRACK_SWITCH_HORSESHOE, 1);
+            database.routeStat().increment(db::RouteStage::POST_MAZE, db::MiscRouteEvent::REMOVE_TRACK_SWITCH_HORSESHOE, 1);
             if (steinerCrossPointIdx != trunkCrossPointIdx) {
                 nn = std::make_shared<db::GridSteiner>(
                     db::GridPoint(node->layerIdx, node->trackIdx, steinerCrossPointIdx));
@@ -370,7 +374,7 @@ void PostMazeRoute::removeTrackSwitchWithVio() {
     });
 }
 
-void PostMazeRoute::extendMinAreaWires() {
+void PostMazeRoute::extendMinAreaWires(db::Database& database) {
     // edges that may violate min-area constraint
     std::vector<std::vector<std::shared_ptr<db::GridSteiner>>> candidateEdges;
 
@@ -422,10 +426,10 @@ void PostMazeRoute::extendMinAreaWires() {
     net.postOrderVisitGridTopo([&](std::shared_ptr<db::GridSteiner> node) {
         if (!(node->parent)) return;
         db::GridEdge edge(*node, *(node->parent));
-        if (edge.isVia()) {
+        if (edge.isVia(database)) {
             if (!node->isRealPin()) {
                 if (node->children.size() == 1 &&
-                    db::GridEdge(*node, *(node->children[0])).isVia()) {  // case 1: both are vias
+                    db::GridEdge(*node, *(node->children[0])).isVia(database)) {  // case 1: both are vias
                     candidateEdges.push_back({node});
                 } else if (node->children.empty()) {  // case 2.1: node end by a via (should be a fakePin)
                     candidateEdges.push_back({node});
@@ -447,11 +451,11 @@ void PostMazeRoute::extendMinAreaWires() {
                 break;
             }
         }
-        if (!handled) getExtendWireRects(candEdge);
+        if (!handled) getExtendWireRects(database, candEdge);
     }
 }
 
-void PostMazeRoute::getExtendWireRects(const std::vector<std::shared_ptr<db::GridSteiner>> &candEdge) const {
+void PostMazeRoute::getExtendWireRects(db::Database& database, const std::vector<std::shared_ptr<db::GridSteiner>> &candEdge) const {
     if (candEdge.size() < 1 || candEdge.size() > 2) {
         printlog("Error: invalid candEdge size in PostMazeRoute::getExtendWireRects()");
         return;
@@ -475,13 +479,13 @@ void PostMazeRoute::getExtendWireRects(const std::vector<std::shared_ptr<db::Gri
     while (high < layer.numCrossPoints() && minLen > layer.getCrossPointRangeDist({leftCP, high})) high++;
     high = min(high, layer.numCrossPoints() - 1);
     vector<db::CostT> crossPointVioCostWOHist =
-        database.getShortWireSegmentVioCost({layer.idx, trackIdx, {low, high}}, net.idx, false);
+        database.getShortWireSegmentVioCost(database, {layer.idx, trackIdx, {low, high}}, net.idx, false);
 
     // with other violations in the candEdge itself?
     bool withOtherViolations = false;
     for (int i = leftCP; i <= rightCP; i++) {
         if (crossPointVioCostWOHist[i - low] > 0) {
-            db::routeStat.increment(db::RouteStage::POST_MAZE, +db::MiscRouteEvent::MIN_AREA_SHADOWED_VIO, 1);
+            database.routeStat().increment(db::RouteStage::POST_MAZE, +db::MiscRouteEvent::MIN_AREA_SHADOWED_VIO, 1);
             withOtherViolations = true;
             break;
         }
@@ -516,7 +520,7 @@ void PostMazeRoute::getExtendWireRects(const std::vector<std::shared_ptr<db::Gri
             succ = !layer.hasMinLenVio(layer.getCrossPointRangeDist({begin, end}));
         };
         vector<db::CostT> crossPointVioCostWHist =
-            database.getShortWireSegmentVioCost({layer.idx, trackIdx, {low, high}}, net.idx, true);
+            database.getShortWireSegmentVioCost(database, {layer.idx, trackIdx, {low, high}}, net.idx, true);
         extendRange(crossPointVioCostWHist);
         if (!succ) {
             extendRange(crossPointVioCostWOHist);
@@ -524,7 +528,7 @@ void PostMazeRoute::getExtendWireRects(const std::vector<std::shared_ptr<db::Gri
     }
 
     // convert min-area violations to space/short violations for generating history cost
-    if (db::rrrIterSetting.converMinAreaToOtherVio && !succ) {
+    if (database.rrrIterSetting().converMinAreaToOtherVio && !succ) {
         for (bool moveLeft = false, leftStop = false, rightStop = false;;) {
             if (begin < low) {
                 leftStop = true;
@@ -548,7 +552,7 @@ void PostMazeRoute::getExtendWireRects(const std::vector<std::shared_ptr<db::Gri
     }
 
     if (!succ && !withOtherViolations) {
-        db::routeStat.increment(db::RouteStage::POST_MAZE, +db::MiscRouteEvent::MIN_AREA_VIO, 1);
+        database.routeStat().increment(db::RouteStage::POST_MAZE, +db::MiscRouteEvent::MIN_AREA_VIO, 1);
     }
 
     // return

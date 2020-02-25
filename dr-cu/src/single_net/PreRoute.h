@@ -6,14 +6,14 @@ class PreRoute {
 public:
     PreRoute(LocalNet& localNetData) : localNet(localNetData) {}
 
-    db::RouteStatus runIterative();
+    db::RouteStatus runIterative(db::Database& database);
 
 private:
     LocalNet& localNet;
 
-    db::RouteStatus run(int numPitchForGuideExpand);
-    void expandGuidesToMargin();
-    db::RouteStatus expandGuidesToCoverPins();
+    db::RouteStatus run(db::Database& database, int numPitchForGuideExpand);
+    void expandGuidesToMargin(db::Database const& database);
+    db::RouteStatus expandGuidesToCoverPins(db::Database& database);
 
-    bool checkGuideConnTrack() const;
+    bool checkGuideConnTrack(db::Database const& database) const;
 };

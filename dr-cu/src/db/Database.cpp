@@ -2,12 +2,10 @@
 #include "rsyn/io/parser/lef_def/DEFControlParser.h"
 #include "single_net/PinTapConnector.h"
 
-db::Database database;
-
 namespace db {
 
 void Database::init() {
-    if (setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (this->setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << std::endl;
         log() << "################################################################" << std::endl;
         log() << "Start initializing database" << std::endl;
@@ -17,14 +15,14 @@ void Database::init() {
 
     auto dieBound = rsynService.physicalDesign.getPhysicalDie().getBounds();
     dieRegion = getBoxFromRsynBounds(dieBound);
-    if (setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (this->setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Die region (in DBU): " << dieRegion << std::endl;
         log() << std::endl;
     }
 
-    RouteGrid::init();
+    RouteGrid::init(*this);
 
-    NetList::init(rsynService);
+    NetList::init(*this, rsynService);
 
     markPinAndObsOccupancy();
 
@@ -33,7 +31,7 @@ void Database::init() {
     sliceRouteGuides();
 
     constructRouteGuideRTrees();
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (this->setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Finish initializing database" << std::endl;
         log() << "MEM: cur=" << utils::mem_use::get_current() << "MB, peak=" << utils::mem_use::get_peak() << "MB"
               << std::endl;
@@ -282,7 +280,7 @@ void Database::writeDEF(const std::string& filename) {
 }
 
 void Database::markPinAndObsOccupancy() {
-    if (db::setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (this->setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Mark pin & obs occupancy on RouteGrid ..." << std::endl;
     }
     vector<std::pair<BoxOnLayer, int>> fixedMetalVec;
@@ -429,7 +427,7 @@ void Database::markPinAndObsOccupancy() {
         layerNumFixedObjects[fixedMetal.first.layerIdx]++;
     }
     // Print
-    if (setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (this->setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "The number of unused pins is " << numUnusedPins << std::endl;
         log() << "The number of OBS is " << numObs << std::endl;
         log() << "The number of special net OBS is " << numSNetObs << std::endl;
@@ -442,16 +440,16 @@ void Database::markPinAndObsOccupancy() {
 
 
     // STEP 2: mark
-    if (setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (this->setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         printlog("mark fixed metal rtrees...");
     }
 
-    markFixedMetalBatch(fixedMetalVec, 0, fixedMetalVec.size());
+    markFixedMetalBatch(*this, fixedMetalVec, 0, fixedMetalVec.size());
 
     addPinViaMetal(fixedMetalVec);
 
     // Mark poor wire
-    if (setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (this->setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         printlog("mark poor wire map...");
     }
     for (const auto& fixedMetal : fixedMetalVec) {
@@ -477,23 +475,23 @@ void Database::markPinAndObsOccupancy() {
         if (fixedMetal.second >=0) {
             // add initial hist cost to help pin access
             if (gridBox.layerIdx != 0) {
-                useHistWireSegments(getLower(gridBox), fixedMetal.second, db::setting.dbInitHistUsageForPinAccess);
+                useHistWireSegments(getLower(gridBox), fixedMetal.second, this->setting().dbInitHistUsageForPinAccess);
             }
             if (gridBox.layerIdx != getLayerNum() - 1) {
-                useHistWireSegments(getUpper(gridBox), fixedMetal.second, db::setting.dbInitHistUsageForPinAccess);
+                useHistWireSegments(getUpper(gridBox), fixedMetal.second, this->setting().dbInitHistUsageForPinAccess);
             }
         }
     }
     // Mark poor via
     for (int i = 0; i < getLayerNum() - 1; ++i) {
-        usePoorViaMap[i] = (layerNumFixedObjects[i] >= setting.dbUsePoorViaMapThres ||
-                            layerNumFixedObjects[i + 1] >= setting.dbUsePoorViaMapThres);
+        usePoorViaMap[i] = (layerNumFixedObjects[i] >= this->setting().dbUsePoorViaMapThres ||
+                            layerNumFixedObjects[i + 1] >= this->setting().dbUsePoorViaMapThres);
     }
-    if (setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (this->setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         printlog("mark poor via map...");
         printlog("usePoorViaMap", usePoorViaMap);
     }
-    initPoorViaMap(fixedMetalVec);
+    initPoorViaMap(*this, fixedMetalVec);
 }
 
 void Database::addPinViaMetal(vector<std::pair<BoxOnLayer, int>>& fixedMetalVec) {
@@ -501,8 +499,8 @@ void Database::addPinViaMetal(vector<std::pair<BoxOnLayer, int>>& fixedMetalVec)
     int beginIdx = fixedMetalVec.size();
 
     std::mutex metalMutex;
-    auto pinViaMT = runJobsMT(database.nets.size(), [&](int netIdx) {
-        const auto& net = database.nets[netIdx];
+    auto pinViaMT = runJobsMT(*this, this->nets.size(), [&](int netIdx) {
+        const auto& net = this->nets[netIdx];
         vector<vector<db::GridBoxOnLayer>> gridPinAccessBoxes;
         getGridPinAccessBoxes(net, gridPinAccessBoxes);
         for (int pinIdx = 0; pinIdx < net.numOfPins(); pinIdx++) {
@@ -519,31 +517,31 @@ void Database::addPinViaMetal(vector<std::pair<BoxOnLayer, int>>& fixedMetalVec)
             if (status != +db::RouteStatus::SUCC_CONN_EXT_PIN || bestBox.layerIdx == tap.layerIdx) continue;
             utils::PointT<DBU> viaLoc(bestBox.cx(), bestBox.cy());
             int layerIdx = min(bestBox.layerIdx, tap.layerIdx);
-            auto viaType = database.getBestViaTypeForFixed(viaLoc, layerIdx, net.idx);
+            auto viaType = this->getBestViaTypeForFixed(viaLoc, layerIdx, net.idx);
             metalMutex.lock();
             fixedMetalVec.emplace_back(db::BoxOnLayer(layerIdx, viaType.getShiftedBotMetal(viaLoc)), net.idx);
             fixedMetalVec.emplace_back(db::BoxOnLayer(layerIdx + 1, viaType.getShiftedTopMetal(viaLoc)), net.idx);
             metalMutex.unlock();
         }
     });
-    if (db::setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (this->setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         printlog("pinViaMT", pinViaMT);
     }
 
-    markFixedMetalBatch(fixedMetalVec, beginIdx, fixedMetalVec.size());  // TODO: may not be needed
+    markFixedMetalBatch(*this, fixedMetalVec, beginIdx, fixedMetalVec.size());  // TODO: may not be needed
 }
 
 void Database::initMTSafeMargin() {
     for (auto& layer : layers) {
         layer.mtSafeMargin = max({layer.minAreaMargin, layer.confLutMargin, layer.fixedMetalQueryMargin});
-        if (db::setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+        if (this->setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
             printlog(layer.name, "mtSafeMargin = max {", layer.minAreaMargin, layer.confLutMargin, layer.fixedMetalQueryMargin, "} =", layer.mtSafeMargin);
         }
     }
 }
 
 void Database::sliceRouteGuides() {
-    if (db::setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (this->setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Slice RouteGuides ..." << std::endl;
         log() << std::endl;
     }
@@ -564,7 +562,7 @@ void Database::sliceRouteGuides() {
 }
 
 void Database::constructRouteGuideRTrees() {
-    if (db::setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (this->setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Construct r-trees for route guides of each net ..." << std::endl;
         log() << std::endl;
     }
@@ -734,9 +732,9 @@ void Database::getGridPinAccessBoxes(const Net& net, vector<vector<db::GridBoxOn
 
 }  // namespace db
 
-MTStat runJobsMT(int numJobs, const std::function<void(int)>& handle) {
-    int numThreads = min(numJobs, db::setting.numThreads);
-    MTStat mtStat(max(1, db::setting.numThreads));
+MTStat runJobsMT(db::Database const& database, int numJobs, const std::function<void(int)>& handle) {
+    int numThreads = min(numJobs, database.setting().numThreads);
+    MTStat mtStat(max(1, database.setting().numThreads));
     if (numThreads <= 1) {
         utils::timer threadTimer;
         for (int i = 0; i < numJobs; ++i) {

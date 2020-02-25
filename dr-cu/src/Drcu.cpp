@@ -5,33 +5,33 @@ void Drcu::init(std::vector<std::string> const& argv) {
     _argc = argv.size();
     _short_format_argv = argv; 
     feed_argv(_short_format_argv);
-    db::setting.makeItSilent();
+    _database.setting().makeItSilent();
     init_ispd_flow();
-    database.init();
-    db::setting.adapt();
-    _router.init();
-    for (auto &net: database.nets) {
+    _database.init();
+    _database.setting().adapt(_database);
+    _router.init(_database);
+    for (auto &net: _database.nets) {
         net.stash();
     }
-    database.stash();
+    _database.stash();
     prepare();
-    if (database.nets.size() < 10000) {
+    if (_database.nets.size() < 10000) {
         ++irr_limit;
     }
-    else if (database.nets.size() > 800000) {
+    else if (_database.nets.size() > 800000) {
         --irr_limit;
     }
 }
 
 void Drcu::reset() {
-    _router.reset();
+    _router.reset(_database);
     _step_cnt = 0;
     _rank_score.clear();
-    _router.reset();
-    for (auto &net: database.nets) {
+    _router.reset(_database);
+    for (auto &net: _database.nets) {
         net.reset();
     }
-    database.reset();
+    _database.reset();
     prepare();
 }
 
@@ -67,7 +67,7 @@ int Drcu::feed_argv(std::vector<std::string> const& short_format_argv) {
         }
     }
 
-    if (db::setting.dbVerbose >= +db::VerboseLevelT::HIGH) {
+    if (_database.setting().dbVerbose >= +db::VerboseLevelT::HIGH) {
         printlog("------------------------------------------------------------------------------");
         printlog("                    ISPD 2019 - Detailed Routing Contest                      ");
         printlog("                             Team number : 15                                 ");
@@ -125,7 +125,7 @@ int Drcu::feed_argv(std::vector<std::string> const& short_format_argv) {
             ret = 0; 
         } else {
             for (const auto &option : desc.options()) {
-                if (db::setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+                if (_database.setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
                     if (_vm.count(option->long_name())) {
                         std::string name = option->description().empty() ? option->long_name() : option->description();
                         log() << std::left << std::setw(18) << name << ": ";
@@ -183,7 +183,7 @@ void Drcu::convert_argv_format(std::vector<std::string> const& short_format_argv
 }
 
 void Drcu::init_ispd_flow() {
-    //    db::setting.makeItSilent();
+    //    _database.setting().makeItSilent();
 
     Rsyn::Session session;
 
@@ -192,70 +192,70 @@ void Drcu::init_ispd_flow() {
     std::string lefFile = _vm.at("lef").as<std::string>();
     std::string defFile = _vm.at("def").as<std::string>();
     std::string guideFile = _vm.at("guide").as<std::string>();
-    db::setting.numThreads = _vm.at("threads").as<int>();
-    db::setting.tat = _vm.at("tat").as<int>();
-    db::setting.outputFile = _vm.at("output").as<std::string>();
+    _database.setting().numThreads = _vm.at("threads").as<int>();
+    _database.setting().tat = _vm.at("tat").as<int>();
+    _database.setting().outputFile = _vm.at("output").as<std::string>();
     // optional
     // multi_net
     if (_vm.count("multiNetVerbose")) {
-        db::setting.multiNetVerbose =
+        _database.setting().multiNetVerbose =
             db::VerboseLevelT::_from_string(_vm.at("multiNetVerbose").as<std::string>().c_str());
     }
     if (_vm.count("multiNetScheduleSortAll")) {
-        db::setting.multiNetScheduleSortAll = _vm.at("multiNetScheduleSortAll").as<bool>();
+        _database.setting().multiNetScheduleSortAll = _vm.at("multiNetScheduleSortAll").as<bool>();
     }
     if (_vm.count("multiNetScheduleReverse")) {
-        db::setting.multiNetScheduleReverse = _vm.at("multiNetScheduleReverse").as<bool>();
+        _database.setting().multiNetScheduleReverse = _vm.at("multiNetScheduleReverse").as<bool>();
     }
     if (_vm.count("multiNetScheduleSort")) {
-        db::setting.multiNetScheduleSort = _vm.at("multiNetScheduleSort").as<bool>();
+        _database.setting().multiNetScheduleSort = _vm.at("multiNetScheduleSort").as<bool>();
     }
     if (_vm.count("rrrIters")) {
-        db::setting.rrrIterLimit = _vm.at("rrrIters").as<int>();
+        _database.setting().rrrIterLimit = _vm.at("rrrIters").as<int>();
     }
     if (_vm.count("rrrWriteEachIter")) {
-        db::setting.rrrWriteEachIter = _vm.at("rrrWriteEachIter").as<bool>();
+        _database.setting().rrrWriteEachIter = _vm.at("rrrWriteEachIter").as<bool>();
     }
     if (_vm.count("rrrInitVioCostDiscount")) {
-        db::setting.rrrInitVioCostDiscount = _vm.at("rrrInitVioCostDiscount").as<double>();
+        _database.setting().rrrInitVioCostDiscount = _vm.at("rrrInitVioCostDiscount").as<double>();
     }
     if (_vm.count("rrrFadeCoeff")) {
-        db::setting.rrrFadeCoeff = _vm.at("rrrFadeCoeff").as<double>();
+        _database.setting().rrrFadeCoeff = _vm.at("rrrFadeCoeff").as<double>();
     }
     // single_net
     if (_vm.count("defaultGuideExpand")) {
-        db::setting.defaultGuideExpand = _vm.at("defaultGuideExpand").as<int>();
+        _database.setting().defaultGuideExpand = _vm.at("defaultGuideExpand").as<int>();
     }
     if (_vm.count("diffLayerGuideVioThres")) {
-        db::setting.diffLayerGuideVioThres = _vm.at("diffLayerGuideVioThres").as<int>();
+        _database.setting().diffLayerGuideVioThres = _vm.at("diffLayerGuideVioThres").as<int>();
     }
     if (_vm.count("wrongWayPointDensity")) {
-        db::setting.wrongWayPointDensity = _vm.at("wrongWayPointDensity").as<double>();
+        _database.setting().wrongWayPointDensity = _vm.at("wrongWayPointDensity").as<double>();
     }
     if (_vm.count("wrongWayPenaltyCoeff")) {
-        db::setting.wrongWayPenaltyCoeff = _vm.at("wrongWayPenaltyCoeff").as<double>();
+        _database.setting().wrongWayPenaltyCoeff = _vm.at("wrongWayPenaltyCoeff").as<double>();
     }
     if (_vm.count("fixOpenBySST")) {
-        db::setting.fixOpenBySST = _vm.at("fixOpenBySST").as<bool>();
+        _database.setting().fixOpenBySST = _vm.at("fixOpenBySST").as<bool>();
     }
     // db
     if (_vm.count("dbVerbose")) {
-        db::setting.dbVerbose = db::VerboseLevelT::_from_string(_vm.at("dbVerbose").as<std::string>().c_str());
+        _database.setting().dbVerbose = db::VerboseLevelT::_from_string(_vm.at("dbVerbose").as<std::string>().c_str());
     }
     if (_vm.count("dbUsePoorViaMapThres")) {
-        db::setting.dbUsePoorViaMapThres = _vm.at("dbUsePoorViaMapThres").as<int>();
+        _database.setting().dbUsePoorViaMapThres = _vm.at("dbUsePoorViaMapThres").as<int>();
     }
     if (_vm.count("dbPoorWirePenaltyCoeff")) {
-        db::setting.dbPoorWirePenaltyCoeff = _vm.at("dbPoorWirePenaltyCoeff").as<double>();
+        _database.setting().dbPoorWirePenaltyCoeff = _vm.at("dbPoorWirePenaltyCoeff").as<double>();
     }
     if (_vm.count("dbPoorViaPenaltyCoeff")) {
-        db::setting.dbPoorViaPenaltyCoeff = _vm.at("dbPoorViaPenaltyCoeff").as<double>();
+        _database.setting().dbPoorViaPenaltyCoeff = _vm.at("dbPoorViaPenaltyCoeff").as<double>();
     }
     if (_vm.count("dbNondefaultViaPenaltyCoeff")) {
-        db::setting.dbNondefaultViaPenaltyCoeff = _vm.at("dbNondefaultViaPenaltyCoeff").as<double>();
+        _database.setting().dbNondefaultViaPenaltyCoeff = _vm.at("dbNondefaultViaPenaltyCoeff").as<double>();
     }
     if (_vm.count("dbInitHistUsageForPinAccess")) {
-        db::setting.dbInitHistUsageForPinAccess = _vm.at("dbInitHistUsageForPinAccess").as<double>();
+        _database.setting().dbInitHistUsageForPinAccess = _vm.at("dbInitHistUsageForPinAccess").as<double>();
     }
 
     // Read benchmarks
@@ -266,13 +266,13 @@ void Drcu::init_ispd_flow() {
         {"guideFile", guideFile},
     };
 
-    if (db::setting.dbVerbose >= +db::VerboseLevelT::HIGH) {
+    if (_database.setting().dbVerbose >= +db::VerboseLevelT::HIGH) {
         log() << std::endl;
         log() << "################################################################" << std::endl;
         log() << "Start reading benchmarks" << std::endl;
     }
     reader.load(params);
-    if (db::setting.dbVerbose >= +db::VerboseLevelT::HIGH) {
+    if (_database.setting().dbVerbose >= +db::VerboseLevelT::HIGH) {
         log() << "Finish reading benchmarks" << std::endl;
         log() << "MEM: cur=" << utils::mem_use::get_current() << "MB, peak=" << utils::mem_use::get_peak() << "MB"
               << std::endl;
@@ -296,10 +296,10 @@ void Drcu::test(std::vector<std::string> const& argv) {
 }
 
 void Drcu::close() {
-    // database.writeNetTopo(db::setting.outputFile + ".topo");
-    database.clear();
-    // database.writeDEF(db::setting.outputFile);
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    // _database.writeNetTopo(_database.setting().outputFile + ".topo");
+    _database.clear();
+    // _database.writeDEF(_database.setting().outputFile);
+    if (_database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Finish writing def" << std::endl;
         log() << "MEM: cur=" << utils::mem_use::get_current() << "MB, peak=" << utils::mem_use::get_peak() << "MB"
               << std::endl;
@@ -313,16 +313,16 @@ void Drcu::close() {
 
 int Drcu::prepare() {
     int res = 0;
-    res = _router.prepare();
+    res = _router.prepare(_database);
     if (res) return res;
 
-    _features = _router.get_nets_feature();
+    _features = _router.get_nets_feature(_database);
     _features_norm.resize(_features.size());
     for (int i = 0; i < _features.size(); ++i) {
         _features_norm.at(i).resize(Router::Feature_idx::FEA_DIM);
     }
 
-    auto feature_mt = runJobsMT(Router::Feature_idx::FEA_DIM, [&](int fea_id) {
+    auto feature_mt = runJobsMT(_database, Router::Feature_idx::FEA_DIM, [&](int fea_id) {
         int min{_features.at(0).at(fea_id)};
         int max{_features.at(0).at(fea_id)};
 
@@ -354,7 +354,7 @@ Drcu::Res Drcu::step(const vector<double>& action) {
             rank_score.emplace_back(action.at(i));
         }
     }
-    res.reward = - _router.route(rank_score) + 366.5;
+    res.reward = - _router.route(_database, rank_score) + 366.5;
     // res.reward /= 1000.0;
     if (_step_cnt < irr_limit) {
         _step_cnt++;
@@ -377,7 +377,7 @@ vector<vector<double>> Drcu::get_the_1st_observation() {
 }
 
 std::array<double, 4> Drcu::get_all_vio() const {
-    auto ret = std::array<double, 4>(database.get_all_vio());
+    auto ret = std::array<double, 4>(_database.get_all_vio());
     //for (auto v : ret) {
     //    std::cout << v << " ";
     //}

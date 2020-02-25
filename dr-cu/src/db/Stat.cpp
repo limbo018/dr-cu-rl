@@ -1,9 +1,8 @@
 #include "Stat.h"
 #include "Setting.h"
+#include "Database.h"
 
 namespace db {
-
-RouteStat routeStat;
 
 RouteStatus operator&(const RouteStatus& lhs, const RouteStatus& rhs) {
     for (auto status : {lhs, rhs}) {
@@ -35,14 +34,14 @@ std::unordered_map<int, std::string> descriptions = {
 
 std::mutex printWarnMsgMutex;
 
-void printWarnMsg(RouteStatus status, const Net& net) {
-    if (setting.dbVerbose < +db::VerboseLevelT::MIDDLE || isSucc(status)) {
+void printWarnMsg(Database const& database, RouteStatus status, const Net& net) {
+    if (database.setting().dbVerbose < +db::VerboseLevelT::MIDDLE || isSucc(status)) {
         return;
     }
     printWarnMsgMutex.lock();
     static std::unordered_map<int, int> counts;
     int& count = counts[status._to_integral()];
-    if (count >= db::setting.maxNumWarnForEachRouteStatus) {
+    if (count >= database.setting().maxNumWarnForEachRouteStatus) {
         printWarnMsgMutex.unlock();
         return;
     }
@@ -53,7 +52,7 @@ void printWarnMsg(RouteStatus status, const Net& net) {
     }
     log() << "Warning: Net " << net.getName() << " gets " << status._to_string() << desc << std::endl;
     ++count;
-    if (count == db::setting.maxNumWarnForEachRouteStatus) {
+    if (count == database.setting().maxNumWarnForEachRouteStatus) {
         log() << "More warnings on " << status._to_string() << " will be suppressed" << std::endl;
         log() << std::endl;
     }

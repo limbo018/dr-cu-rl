@@ -6,9 +6,11 @@
 
 namespace db {
 
+class Database; 
+
 class LayerList {
 public:
-    void init();
+    void init(Database const& database);
 
     // Check whether a geo primitive is valid
     bool isValid(const GridPoint& gridPt) const;
@@ -58,8 +60,8 @@ public:
 
     // Get ViaBox from the intersection of two BoxOnLayer (in neighboring layers)
     // note: 1. should be on neighboring layers, 2. ViaBox may be empty.
-    ViaBox getViaBoxBetween(const BoxOnLayer& lower, const BoxOnLayer& upper);
-    ViaBox getViaBoxBetween(const GridBoxOnLayer& lower, const GridBoxOnLayer& upper) {
+    ViaBox getViaBoxBetween(const BoxOnLayer& lower, const BoxOnLayer& upper) const;
+    ViaBox getViaBoxBetween(const GridBoxOnLayer& lower, const GridBoxOnLayer& upper) const {
         return getViaBoxBetween(getLoc(lower), getLoc(upper));
     }
     bool isConnected(const GridBoxOnLayer& lhs, const GridBoxOnLayer& rhs);

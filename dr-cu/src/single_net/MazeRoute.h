@@ -20,7 +20,7 @@ class MazeRoute {
 public:
     MazeRoute(LocalNet &localNetData) : localNet(localNetData) {}
 
-    db::RouteStatus run();
+    db::RouteStatus run(db::Database& database);
 
 private:
     LocalNet &localNet;
@@ -30,6 +30,6 @@ private:
     // vector<db::CostT> vertexCostLBs;       // cost lower bound corresponding to the min-upper-bound solution for each vertex
     vector<std::shared_ptr<Solution>> pinSols;  // best solution for each pin
 
-    db::RouteStatus route(int startPin);
-    void getResult();
+    db::RouteStatus route(db::Database const& database, int startPin);
+    void getResult(db::Database const& database);
 };

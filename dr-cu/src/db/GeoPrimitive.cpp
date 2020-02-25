@@ -48,7 +48,7 @@ ostream& operator<<(ostream& os, const GridEdge& edge) {
     return os;
 }
 
-bool GridEdge::isVia() const {
+bool GridEdge::isVia(Database const& database) const {
     const auto& lower = (u.layerIdx <= v.layerIdx) ? u : v;
     const auto& upper = (u.layerIdx > v.layerIdx) ? u : v;
     if ((lower.layerIdx + 1) == database.getLayerNum()) {

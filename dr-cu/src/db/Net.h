@@ -5,6 +5,8 @@
 
 namespace db {
 
+class Database; 
+
 class NetBase {
 public:
     ~NetBase();
@@ -67,8 +69,8 @@ class NetList {
 public:
     vector<Net> nets;
 
-    void init(RsynService& rsynService);
-    void writeNetTopo(const std::string& filename);
+    void init(Database const& database, RsynService& rsynService);
+    void writeNetTopo(Database const& database, const std::string& filename);
 };
 
 }  // namespace db

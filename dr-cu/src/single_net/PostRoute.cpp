@@ -1,5 +1,6 @@
 #include "PostRoute.h"
 #include "PinTapConnector.h"
+#include "db/Database.h"
 
 void PostRoute::getPinTapPoints() {
     dbNet.postOrderVisitGridTopo([&](std::shared_ptr<db::GridSteiner> node) {
@@ -9,34 +10,34 @@ void PostRoute::getPinTapPoints() {
     });
 }
 
-db::RouteStatus PostRoute::run() {
+db::RouteStatus PostRoute::run(db::Database& database) {
     db::RouteStatus status = db::RouteStatus::SUCC_NORMAL;
 
     getPinTapPoints();
 
-    status = connectPins();
+    status = connectPins(database);
     if (!db::isSucc(status)) {
         return status;
     }
 
-    getTopo();
+    getTopo(database);
 
-    db::routeStat.increment(db::RouteStage::POST, status);
+    database.routeStat().increment(db::RouteStage::POST, status);
     return status;
 }
 
-db::RouteStatus PostRoute::connectPins() {
+db::RouteStatus PostRoute::connectPins(db::Database& database) {
     db::RouteStatus netStatus = db::RouteStatus::SUCC_NORMAL;
 
     vector<vector<std::shared_ptr<db::GridSteiner>>> samePinTaps(dbNet.numOfPins());
     for (auto tap : pinTaps) {
         PinTapConnector pinTapConnector(*tap, dbNet, tap->pinIdx);
-        netStatus &= pinTapConnector.run();
+        netStatus &= pinTapConnector.run(database);
         if (!pinTapConnector.bestLink.empty()) {
             linkToPins[tap] = move(pinTapConnector.bestLink);
             samePinTaps[tap->pinIdx].push_back(tap);  // only consider those with links
             if (pinTapConnector.bestVio > 0) {
-                db::routeStat.increment(db::RouteStage::POST, db::MiscRouteEvent::LINK_PIN_VIO, 1);
+                database.routeStat().increment(db::RouteStage::POST, db::MiscRouteEvent::LINK_PIN_VIO, 1);
             }
         }
         if (pinTapConnector.bestLinkVia.first != -1) {
@@ -45,23 +46,23 @@ db::RouteStatus PostRoute::connectPins() {
     }
 
     if (!db::isSucc(netStatus)) {
-        printWarnMsg(netStatus, dbNet);
+        printWarnMsg(database, netStatus, dbNet);
     }
 
     return netStatus;
 }
 
-void PostRoute::getViaTypes() {
+void PostRoute::getViaTypes(db::Database& database) {
     db::RouteStatus status = db::RouteStatus::SUCC_NORMAL;
     getPinTapPoints();
-    status = connectPins();
+    status = connectPins(database);
     if (!db::isSucc(status)) {
         return;
     }
     dbNet.postOrderVisitGridTopo([&](std::shared_ptr<db::GridSteiner> node) {
         if (node->parent) {
             db::GridEdge edge(*node, *(node->parent));
-            if (edge.isVia()) {
+            if (edge.isVia(database)) {
                 // get pinIdx (consider a neighbor vertex of node-parent edge)
                 auto steinerU = node, steinerV = node->parent;
                 int pinIdx = node->pinIdx;
@@ -79,18 +80,18 @@ void PostRoute::getViaTypes() {
                         }
                     }
                 }
-                node->viaType = getViaType(steinerU, steinerV, pinIdx);
+                node->viaType = getViaType(database, steinerU, steinerV, pinIdx);
             }
         }
     });
 }
 
-void PostRoute::getTopo() {
+void PostRoute::getTopo(db::Database& database) {
     // 1. from gridTopo
     dbNet.postOrderVisitGridTopo([&](std::shared_ptr<db::GridSteiner> node) {
         if (node->parent) {
             db::GridEdge edge(*node, *(node->parent));
-            if (edge.isVia()) {
+            if (edge.isVia(database)) {
                 const db::GridPoint &via = edge.lowerGridPoint();
                 database.writeDEFVia(dbNet, database.getLoc(edge.u), *(node->viaType), edge.u.layerIdx);
             } else if (edge.isTrackSegment() || edge.isWrongWaySegment()) {
@@ -123,7 +124,7 @@ void PostRoute::getTopo() {
                                                                                                     const unsigned
                                                                                                         subTreeIdx) {
         if (node->extWireSeg)
-            std::get<2>(subTreeMetals[subTreeIdx]).push_back(getWireSegmentMetal(*(node->extWireSeg)));
+            std::get<2>(subTreeMetals[subTreeIdx]).push_back(getWireSegmentMetal(database, *(node->extWireSeg)));
         const int layerIdx = node->layerIdx;
         if (node->pinIdx >= 0) {
             const unsigned pinIdx = static_cast<unsigned>(node->pinIdx);
@@ -134,7 +135,7 @@ void PostRoute::getTopo() {
             if (linkIt != linkToPins.end()) {
                 for (const utils::SegmentT<DBU> &link : linkIt->second) {
                     database.writeDEFWireSegment(dbNet, {link.lx(), link.ly()}, {link.hx(), link.hy()}, layerIdx);
-                    std::get<2>(subTreeMetals[subTreeIdx]).push_back(PinTapConnector::getLinkMetal(link, layerIdx));
+                    std::get<2>(subTreeMetals[subTreeIdx]).push_back(PinTapConnector::getLinkMetal(database, link, layerIdx));
                 }
             }
             const std::unordered_map<std::shared_ptr<db::GridSteiner>,
@@ -162,14 +163,14 @@ void PostRoute::getTopo() {
             }
         }
         for (auto child : node->children) {
-            std::get<2>(subTreeMetals[subTreeIdx]).push_back(getEdgeLayerMetal({*node, *child}, child->viaType));
+            std::get<2>(subTreeMetals[subTreeIdx]).push_back(getEdgeLayerMetal(database, {*node, *child}, child->viaType));
             if (layerIdx == child->layerIdx)
                 updateSubTreeMetals(child, subTreeIdx);
             else {
                 subTreeMetals.emplace_back(
                     child->layerIdx,
                     std::unordered_set<unsigned>(),
-                    vector<utils::BoxT<DBU>>(1, getEdgeLayerMetal({*child, *node}, child->viaType)));
+                    vector<utils::BoxT<DBU>>(1, getEdgeLayerMetal(database, {*child, *node}, child->viaType)));
                 updateSubTreeMetals(child, subTreeMetals.size() - 1);
             }
         }
@@ -215,11 +216,11 @@ void PostRoute::getTopo() {
         const db::AggrParaRunSpace aggressiveSpacing =
             std::get<1>(subTreeMetal).empty() ? db::AggrParaRunSpace::DEFAULT : db::AggrParaRunSpace::LARGER_WIDTH;
         MetalFiller metalFiller(std::get<2>(subTreeMetal), std::get<0>(subTreeMetal), aggressiveSpacing);
-        metalFiller.run();
+        metalFiller.run(database);
         for (const utils::BoxT<DBU> &rect : metalFiller.fillMetals)
             database.writeDEFFillRect(dbNet, rect, std::get<0>(subTreeMetal));
         if (!metalFiller.fillMetals.empty()) {
-            db::routeStat.increment(db::RouteStage::POST, db::MiscRouteEvent::FILL_SAME_NET_SPACE, 1);
+            database.routeStat().increment(db::RouteStage::POST, db::MiscRouteEvent::FILL_SAME_NET_SPACE, 1);
         }
     }
 
@@ -244,7 +245,7 @@ void PostRoute::getTopo() {
             }
             rect[layer.direction].low -= halfWidth;
             rect[layer.direction].high += halfWidth;
-            db::routeStat.increment(db::RouteStage::POST, db::MiscRouteEvent::REMOVE_CORNER, 1);
+            database.routeStat().increment(db::RouteStage::POST, db::MiscRouteEvent::REMOVE_CORNER, 1);
             database.writeDEFFillRect(dbNet, rect, c->layerIdx);
         }
     });
@@ -253,20 +254,21 @@ void PostRoute::getTopo() {
     dbNet.defWireSegments.shrink_to_fit();
 }
 
-utils::BoxT<DBU> PostRoute::getEdgeLayerMetal(const db::GridEdge &edge, const db::ViaType *viaType) {
+utils::BoxT<DBU> PostRoute::getEdgeLayerMetal(db::Database const& database, const db::GridEdge &edge, const db::ViaType *viaType) {
     utils::BoxT<DBU> targetMetal;
-    if (edge.isVia()) {
+    if (edge.isVia(database)) {
         targetMetal = (edge.u.layerIdx < edge.v.layerIdx) ? viaType->bot : viaType->top;
         targetMetal.ShiftBy(database.getLoc(edge.u));
     } else if (edge.isTrackSegment() || edge.isWrongWaySegment()) {
-        targetMetal = getWireSegmentMetal(edge);
+        targetMetal = getWireSegmentMetal(database, edge);
     } else {
         log() << "Warning in " << __func__ << ": invalid edge type. skip." << std::endl;
     }
     return targetMetal;
 }
 
-void PostRoute::processAllSameLayerSameNetBoxes(const vector<db::BoxOnLayer> &pinAccessBoxes,
+void PostRoute::processAllSameLayerSameNetBoxes(db::Database const& database, 
+                                                const vector<db::BoxOnLayer> &pinAccessBoxes,
                                                 int layerIdx,
                                                 const vector<utils::SegmentT<DBU>> &linkToPin,
                                                 const std::function<void(const utils::BoxT<DBU> &)> &handle) {
@@ -279,11 +281,11 @@ void PostRoute::processAllSameLayerSameNetBoxes(const vector<db::BoxOnLayer> &pi
     // link to pins
     for (const auto &link : linkToPin) {
         // assme same layer
-        handle(PinTapConnector::getLinkMetal(link, layerIdx));
+        handle(PinTapConnector::getLinkMetal(database, link, layerIdx));
     }
 }
 
-const db::ViaType *PostRoute::getViaType(std::shared_ptr<db::GridSteiner> u,
+const db::ViaType *PostRoute::getViaType(db::Database const& database, std::shared_ptr<db::GridSteiner> u,
                                          std::shared_ptr<db::GridSteiner> v,
                                          int pinIdx) {
     const auto &cutLayer = database.getCutLayer(min(u->layerIdx, v->layerIdx));
@@ -308,6 +310,7 @@ const db::ViaType *PostRoute::getViaType(std::shared_ptr<db::GridSteiner> u,
             viaRegion.ShiftBy(viaLoc);
             DBU ovlpArea = 0;
             processAllSameLayerSameNetBoxes(
+                database, 
                 dbNet.pinAccessBoxes[pinIdx], u->layerIdx, linkToPin, [&](const utils::BoxT<DBU> &box) {
                     auto ovlp = viaRegion.IntersectWith(box);
                     if (ovlp.IsValid()) {
@@ -332,7 +335,7 @@ const db::ViaType *PostRoute::getViaType(std::shared_ptr<db::GridSteiner> u,
     return bestViaType;
 }
 
-utils::BoxT<DBU> PostRoute::getWireSegmentMetal(const db::GridEdge &edge) {
+utils::BoxT<DBU> PostRoute::getWireSegmentMetal(db::Database const& database, const db::GridEdge &edge) {
     auto tmpEdge = edge;
     if (tmpEdge.u.trackIdx > tmpEdge.v.trackIdx || tmpEdge.u.crossPointIdx > tmpEdge.v.crossPointIdx)
         std::swap(tmpEdge.u, tmpEdge.v);
@@ -345,16 +348,16 @@ utils::BoxT<DBU> PostRoute::getWireSegmentMetal(const db::GridEdge &edge) {
     return box;
 }
 
-void MetalFiller::run() {
+void MetalFiller::run(db::Database const& database) {
     for (int i = 0; i < targetMetals.size(); ++i) {
-        getFillRect(targetMetals[i]);
+        getFillRect(database, targetMetals[i]);
     }
     for (int i = 0; i < fillMetals.size(); ++i) {
-        getFillRect(fillMetals[i]);
+        getFillRect(database, fillMetals[i]);
     }
 }
 
-void MetalFiller::getFillRect(utils::BoxT<DBU> targetMetal) {
+void MetalFiller::getFillRect(db::Database const& database, utils::BoxT<DBU> targetMetal) {
     for (int dir = 0; dir < 2; ++dir) {
         DBU space = database.getLayer(layerIdx).getSpace(targetMetal, dir, aggrSpace);
         auto extendLow = targetMetal;  // left: lower end of dir
@@ -399,7 +402,7 @@ void MetalFiller::iterateAllMetals(const std::function<void(const utils::BoxT<DB
     for (const auto &metal : fillMetals) handle(metal);
 }
 
-void connectBySTT(db::Net &net) {
+void connectBySTT(db::Database& database, db::Net &net) {
     using PointOnLayer = std::pair<utils::PointT<DBU>, int>;
 
     int numPin = net.numOfPins();

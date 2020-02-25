@@ -1,7 +1,8 @@
 #include "GridGraphBuilderBase.h"
 #include "PinTapConnector.h"
+#include "db/Database.h"
 
-double GridGraphBuilderBase::getPinPointCost(const vector<db::BoxOnLayer> &accessBoxes, const db::GridPoint &grid) {
+double GridGraphBuilderBase::getPinPointCost(db::Database const& database, const vector<db::BoxOnLayer> &accessBoxes, const db::GridPoint &grid) {
     auto point = database.getLoc(grid);
     DBU minDist = std::numeric_limits<DBU>::max() / 10;  // make it safe for adding in case no same-layer box
     double cost = -1;
@@ -29,7 +30,7 @@ double GridGraphBuilderBase::getPinPointCost(const vector<db::BoxOnLayer> &acces
     return cost;
 }
 
-void GridGraphBuilderBase::updatePinVertex(int pinIdx, int vertexIdx, bool fakePin) {
+void GridGraphBuilderBase::updatePinVertex(db::Database const& database, int pinIdx, int vertexIdx, bool fakePin) {
     if (fakePin) {
         graph.fakePins.insert(vertexIdx);
     }
@@ -39,8 +40,8 @@ void GridGraphBuilderBase::updatePinVertex(int pinIdx, int vertexIdx, bool fakeP
         int oriPinIdx = it->second;
         if (pinIdx != oriPinIdx) {
             const db::GridPoint& point = vertexToGridPoint[vertexIdx];
-            const double oriCost = getPinPointCost(localNet.dbNet.pinAccessBoxes[oriPinIdx], point);
-            const double newCost = getPinPointCost(localNet.dbNet.pinAccessBoxes[pinIdx], point);
+            const double oriCost = getPinPointCost(database, localNet.dbNet.pinAccessBoxes[oriPinIdx], point);
+            const double newCost = getPinPointCost(database, localNet.dbNet.pinAccessBoxes[pinIdx], point);
             if (oriCost < newCost) {
                 graph.vertexToPin[vertexIdx] = pinIdx;
                 auto &oriPinToVertex = graph.pinToVertex[oriPinIdx];
@@ -57,12 +58,12 @@ void GridGraphBuilderBase::updatePinVertex(int pinIdx, int vertexIdx, bool fakeP
     }
 }
 
-void GridGraphBuilderBase::addOutofPinPenalty() {
+void GridGraphBuilderBase::addOutofPinPenalty(db::Database const& database) {
     for (unsigned p = 0; p < localNet.numOfPins(); p++) {
         for (auto vertex : graph.pinToVertex[p]) {
-            graph.vertexCost[vertex] += getPinPointCost(localNet.dbNet.pinAccessBoxes[p], vertexToGridPoint[vertex]);
+            graph.vertexCost[vertex] += getPinPointCost(database, localNet.dbNet.pinAccessBoxes[p], vertexToGridPoint[vertex]);
             PinTapConnector pinTapConnector(vertexToGridPoint[vertex], localNet.dbNet, p);
-            pinTapConnector.run();
+            pinTapConnector.run(database);
             if (pinTapConnector.bestVio > 0) {
                 graph.vertexCost[vertex] += database.getUnitSpaceVioCost();
             }

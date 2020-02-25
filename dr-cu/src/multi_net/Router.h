@@ -5,15 +5,15 @@
 
 class Router {
 public:
-    void run();
-    int step();
-    void reset();
-    void init();
-    vector<int> getNetsToRoute();
+    void run(db::Database& database);
+    int step(db::Database& database);
+    void reset(db::Database& database);
+    void init(db::Database& database);
+    vector<int> getNetsToRoute(db::Database& database);
 
-    vector<vector<int>> get_nets_feature();
-    double route(vector<double> rank_score);
-    int prepare();
+    vector<vector<int>> get_nets_feature(db::Database& database);
+    double route(db::Database& database, vector<double> rank_score);
+    int prepare(db::Database& database);
     enum Feature_idx{ROUTED=0, SIZE, DEGREE, NUM_RIP_UP, VIO_COST, WIRE_LENGTH, VIA, LAYER_BEGIN,LAYER_END=LAYER_BEGIN+9-1, FEA_DIM};
 private:
     int iter=0;
@@ -27,13 +27,13 @@ private:
     std::unordered_map<int, float> _wire_usage_length;
     std::unordered_map<int, std::set<int>> _layer_usage;
 
-    void ripup(const vector<int>& netsToRoute);
-    void updateCost(const vector<int>& netsToRoute);
-    void route(const vector<int>& netsToRoute);
-    void finish();
-    void unfinish();
+    void ripup(db::Database& database, const vector<int>& netsToRoute);
+    void updateCost(db::Database& database, const vector<int>& netsToRoute);
+    void route(db::Database& database, const vector<int>& netsToRoute);
+    void finish(db::Database& database);
+    void unfinish(db::Database& database);
 
-    void pre_route(const vector<int>& netsToRoute);
-    double printStat(bool major = false);
-    double get_score();
+    void pre_route(db::Database& database, const vector<int>& netsToRoute);
+    double printStat(db::Database const& database, bool major = false);
+    double get_score(db::Database& database);
 };

@@ -1,5 +1,6 @@
 #include "CutLayer.h"
 #include "Setting.h"
+#include "Database.h"
 
 namespace db {
 
@@ -49,7 +50,8 @@ utils::BoxT<DBU> ViaType::getShiftedTopMetal(const utils::PointT<DBU>& viaPos) c
     return metal;
 }
 
-CutLayer::CutLayer(const Rsyn::PhysicalLayer& rsynLayer,
+CutLayer::CutLayer(Database const& database, 
+                   const Rsyn::PhysicalLayer& rsynLayer,
                    const vector<Rsyn::PhysicalVia>& rsynVias,
                    const Dimension botDim,
                    const Dimension topDim,
@@ -80,7 +82,7 @@ CutLayer::CutLayer(const Rsyn::PhysicalLayer& rsynLayer,
         if ((rsynVia.allBottomGeometries().size() != 1 ||
              rsynVia.allCutGeometries().size() != 1 ||
              rsynVia.allTopGeometries().size() != 1)) {
-            if (setting.dbVerbose >= +VerboseLevelT::MIDDLE) {
+            if (database.setting().dbVerbose >= +VerboseLevelT::MIDDLE) {
                 log() << "Warning in " << __func__ << ": For " << rsynVia.getName()
                       << " , has not exactly one metal layer bound or more than one cut layer bound... " << std::endl;
             }

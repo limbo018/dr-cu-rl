@@ -48,7 +48,8 @@ public:
 
 class CutLayer {
 public:
-    CutLayer(const Rsyn::PhysicalLayer& rsynLayer,
+    CutLayer(Database const& database, 
+             const Rsyn::PhysicalLayer& rsynLayer,
              const vector<Rsyn::PhysicalVia>& rsynVias,
              const Dimension botDim,
              const Dimension topDim,

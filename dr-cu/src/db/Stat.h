@@ -5,6 +5,8 @@
 
 namespace db {
 
+class Database; 
+
 BETTER_ENUM(RouteStatus,
             int,
             // 1. Succ
@@ -66,7 +68,7 @@ constexpr bool isSucc(RouteStatus status) {
 RouteStatus operator&(const RouteStatus& lhs, const RouteStatus& rhs);
 RouteStatus& operator&=(RouteStatus& lhs, const RouteStatus& rhs);
 
-void printWarnMsg(RouteStatus status, const Net& net);
+void printWarnMsg(Database const& database, RouteStatus status, const Net& net);
 
 class StageRouteStat {
 public:
@@ -95,7 +97,5 @@ private:
     std::unordered_map<int, StageRouteStat> stages;
     std::mutex routeStatusMutex;
 };
-
-extern RouteStat routeStat;
 
 }  // namespace db

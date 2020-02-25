@@ -1,7 +1,7 @@
 #include "GridGraphBuilder.h"
 #include "db/Database.h"
 
-void GridGraphBuilder::run() {
+void GridGraphBuilder::run(db::Database const& database) {
     // 1. Give each grid point an index
     for (auto &gridBox : localNet.gridRouteGuides) {
         int begin = intervals.empty() ? 0 : intervals.back().second;
@@ -36,7 +36,7 @@ void GridGraphBuilder::run() {
             for (int t = trackInterval.low; t <= trackInterval.high; t++) {
                 for (int c = cpInterval.low; c <= cpInterval.high; c++) {
                     int u = guideToVertex(ga.first, t, c);
-                    updatePinVertex(p, u, fakePin);
+                    updatePinVertex(database, p, u, fakePin);
                 }
             }
         }
@@ -47,28 +47,28 @@ void GridGraphBuilder::run() {
     // 3. Add inter-guide connection
     for (unsigned b1 = 0; b1 < localNet.gridRouteGuides.size(); b1++) {
         for (unsigned b2 : localNet.guideConn[b1])
-            if (b1 < b2) connectTwoGuides(b1, b2);
+            if (b1 < b2) connectTwoGuides(database, b1, b2);
     }
 
     // 4. Add wrong way connection
-    addWrongWayConn();
+    addWrongWayConn(database);
 
     // 5. Add intra-guide connection
-    for (unsigned b = 0; b < localNet.gridRouteGuides.size(); b++) connectGuide(b);
+    for (unsigned b = 0; b < localNet.gridRouteGuides.size(); b++) connectGuide(database, b);
 
-    setMinAreaFlags();
-    addOutofPinPenalty();
+    setMinAreaFlags(database);
+    addOutofPinPenalty(database);
     fixDisconnectedPin();
 }
 
-void GridGraphBuilder::addWrongWayConn() {
+void GridGraphBuilder::addWrongWayConn(db::Database const& database) {
     // Note: assume all wrong way edge has same weight
-    for (unsigned b = 0; b < localNet.gridRouteGuides.size(); b++) addRegWrongWayConn(b);
-    addPinWrongWayConn();
-    addAdjGuideWrongWayConn();
+    for (unsigned b = 0; b < localNet.gridRouteGuides.size(); b++) addRegWrongWayConn(database, b);
+    addPinWrongWayConn(database);
+    addAdjGuideWrongWayConn(database);
 }
 
-void GridGraphBuilder::addAdjGuideWrongWayConn() {
+void GridGraphBuilder::addAdjGuideWrongWayConn(db::Database const& database) {
     for (unsigned b1 = 0; b1 < localNet.gridRouteGuides.size(); b1++) {
         for (unsigned b2 : localNet.guideAdj[b1]) {
             if (b1 < b2) {
@@ -90,10 +90,10 @@ void GridGraphBuilder::addAdjGuideWrongWayConn() {
 
                 auto cpRange = box1.crossPointRange.IntersectWith(box2.crossPointRange);
 
-                int numWrongWayPoint = (cpRange.range() + 1) * db::rrrIterSetting.wrongWayPointDensity;
+                int numWrongWayPoint = (cpRange.range() + 1) * database.rrrIterSetting().wrongWayPointDensity;
 
                 DBU pitch = database.getLayer(box1.layerIdx).pitch;
-                db::CostT wrongWayCost = db::setting.wrongWayPenaltyCoeff * pitch;
+                db::CostT wrongWayCost = database.setting().wrongWayPenaltyCoeff * pitch;
 
                 auto setEdgeCost = [&](int crossPointIdx) {
                     int u = guideToVertex(loGuideIdx, loTrackIdx, crossPointIdx);
@@ -116,7 +116,7 @@ void GridGraphBuilder::addAdjGuideWrongWayConn() {
     }
 }
 
-void GridGraphBuilder::addPinWrongWayConn() {
+void GridGraphBuilder::addPinWrongWayConn(db::Database const& database) {
     const int extraRange = 2;
     for (unsigned p = 0; p < localNet.numOfPins(); p++) {
         for (auto ga : localNet.pinGuideConn[p]) {
@@ -142,7 +142,7 @@ void GridGraphBuilder::addPinWrongWayConn() {
             utils::IntervalT<int> trackInterval = accessBox.trackRange.IntersectWith(guideBox.trackRange);
 
             DBU pitch = database.getLayer(guideBox.layerIdx).pitch;
-            db::CostT wrongWayCost = db::setting.wrongWayPenaltyCoeff * pitch;
+            db::CostT wrongWayCost = database.setting().wrongWayPenaltyCoeff * pitch;
 
             for (int c = cpInterval.low; c <= cpInterval.high; c++) {
                 for (int t = trackInterval.low; t < trackInterval.high; t++) {
@@ -155,7 +155,7 @@ void GridGraphBuilder::addPinWrongWayConn() {
     }
 }
 
-void GridGraphBuilder::addRegWrongWayConn(int guideIdx) {
+void GridGraphBuilder::addRegWrongWayConn(db::Database const& database, int guideIdx) {
     const db::GridBoxOnLayer &box = localNet.gridRouteGuides[guideIdx];
 
     if (!database.isValid(box)) return;
@@ -163,10 +163,10 @@ void GridGraphBuilder::addRegWrongWayConn(int guideIdx) {
     const auto &cpRange = box.crossPointRange;
     const auto &trackRange = box.trackRange;
 
-    int numWrongWayPoint = (cpRange.range() + 1) * db::rrrIterSetting.wrongWayPointDensity;
+    int numWrongWayPoint = (cpRange.range() + 1) * database.rrrIterSetting().wrongWayPointDensity;
 
     int pitch = database.getLayer(box.layerIdx).pitch;
-    db::CostT wrongWayCost = db::setting.wrongWayPenaltyCoeff * pitch;
+    db::CostT wrongWayCost = database.setting().wrongWayPenaltyCoeff * pitch;
 
     auto setEdgeCost = [&](int crossPointIdx, int beginTrack, int endTrack) {
         int u = guideToVertex(guideIdx, beginTrack, crossPointIdx);
@@ -186,7 +186,7 @@ void GridGraphBuilder::addRegWrongWayConn(int guideIdx) {
     }
 }
 
-void GridGraphBuilder::connectGuide(int guideIdx) {
+void GridGraphBuilder::connectGuide(db::Database const& database, int guideIdx) {
     const db::GridBoxOnLayer &box = localNet.gridRouteGuides[guideIdx];
 
     if (!database.isValid(box)) return;
@@ -205,8 +205,8 @@ void GridGraphBuilder::connectGuide(int guideIdx) {
         if (endCP - beginCP == 1) {
             graph.addEdge(u, v, FORWARD, 0);
         } else {
-            db::CostT cost = database.getWireSegmentCost({layerIdx, trackIdx, {beginCP + 1, endCP - 1}}, netIdx);
-            int penalty = localNet.getWireSegmentPenalty(guideIdx, trackIdx, beginCP, endCP);
+            db::CostT cost = database.getWireSegmentCost(database, {layerIdx, trackIdx, {beginCP + 1, endCP - 1}}, netIdx);
+            int penalty = localNet.getWireSegmentPenalty(database, guideIdx, trackIdx, beginCP, endCP);
             graph.addEdge(u, v, FORWARD, cost * (1 + penalty));
         }
     };
@@ -221,7 +221,7 @@ void GridGraphBuilder::connectGuide(int guideIdx) {
     if (cpRange.range() == 0) {
         for (int t = trackRange.low; t <= trackRange.high; t++) {
             int vertex = guideToVertex(guideIdx, t, cpRange.low);
-            db::CostT cost = database.getWireSegmentCost({layerIdx, t, cpRange}, netIdx);
+            db::CostT cost = database.getWireSegmentCost(database, {layerIdx, t, cpRange}, netIdx);
             int penalty = localNet.getCrossPointPenalty(guideIdx, t, cpRange.low);
             graph.setVertexCost(vertex, cost * (1 + penalty));
         }
@@ -263,7 +263,7 @@ void GridGraphBuilder::connectGuide(int guideIdx) {
         for (auto &interval : indirectIntervals) {
             for (int c = interval.low; c + 1 <= interval.high; c++) setEdgeCost(t, c, c + 1);
 
-            const vector<db::CostT> &crossPointCost = database.getShortWireSegmentCost({layerIdx, t, interval}, netIdx);
+            const vector<db::CostT> &crossPointCost = database.getShortWireSegmentCost(database, {layerIdx, t, interval}, netIdx);
             for (int c = interval.low; c <= interval.high; c++) {
                 int vertex = guideToVertex(guideIdx, t, c);
                 db::CostT cost = crossPointCost[c - interval.low];
@@ -274,7 +274,7 @@ void GridGraphBuilder::connectGuide(int guideIdx) {
     }
 }
 
-void GridGraphBuilder::connectTwoGuides(int guideIdx1, int guideIdx2) {
+void GridGraphBuilder::connectTwoGuides(db::Database const& database, int guideIdx1, int guideIdx2) {
     const db::GridBoxOnLayer &box1 = localNet.gridRouteGuides[guideIdx1];
     const db::GridBoxOnLayer &box2 = localNet.gridRouteGuides[guideIdx2];
 
@@ -300,7 +300,7 @@ void GridGraphBuilder::connectTwoGuides(int guideIdx1, int guideIdx2) {
             int u = guideToVertex(upperIdx, upperTrackIdx, upperCPIdx);
             int v = guideToVertex(lowerIdx, lowerTrackIdx, lowerCPIdx);
 
-            db::CostT edgeCost = database.getViaCost({viaBox.lower.layerIdx, lowerTrackIdx, lowerCPIdx}, localNet.idx);
+            db::CostT edgeCost = database.getViaCost(database, {viaBox.lower.layerIdx, lowerTrackIdx, lowerCPIdx}, localNet.idx);
             int penalty =
                 localNet.getViaPenalty(upperIdx, upperTrackIdx, upperCPIdx, lowerIdx, lowerTrackIdx, lowerCPIdx);
 
@@ -309,7 +309,7 @@ void GridGraphBuilder::connectTwoGuides(int guideIdx1, int guideIdx2) {
     }
 }
 
-void GridGraphBuilder::setMinAreaFlags() {
+void GridGraphBuilder::setMinAreaFlags(db::Database const& database) {
     minAreaFixable.resize(intervals.back().second, false);
     for (unsigned guideIdx = 0; guideIdx < localNet.gridRouteGuides.size(); guideIdx++) {
         const db::GridBoxOnLayer &box = localNet.gridRouteGuides[guideIdx];
@@ -331,7 +331,7 @@ void GridGraphBuilder::setMinAreaFlags() {
 
         for (int t = box.trackRange.low; t <= box.trackRange.high; t++) {
             vector<utils::IntervalT<int>> emptyIntervals =
-                database.getEmptyIntvl({layer.idx, t, queryInterval}, localNet.idx);
+                database.getEmptyIntvl(database, {layer.idx, t, queryInterval}, localNet.idx);
 
             const int vertexIdxBias = guideToVertex(guideIdx, t, loCPIdx);
 

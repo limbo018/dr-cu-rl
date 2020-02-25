@@ -6,6 +6,9 @@ namespace db {
 
 BETTER_ENUM(VerboseLevelT, int, LOW = 0, MIDDLE = 1, HIGH = 2);
 
+// forward declaration 
+class Database; 
+
 // global setting
 class Setting {
 public:
@@ -63,10 +66,8 @@ public:
     static constexpr int weightMinAreaVioNum = 500;
 
     void makeItSilent();
-    void adapt();
+    void adapt(Database const& database);
 };
-
-extern Setting setting;
 
 // setting that changes in each rrr iteration
 class RrrIterSetting {
@@ -76,10 +77,8 @@ public:
     bool addDiffLayerGuides;
     bool converMinAreaToOtherVio;
 
-    void update(int iter);
+    void update(Database const& database, int iter);
     void print() const;
 };
-
-extern RrrIterSetting rrrIterSetting;
 
 }  //   namespace db

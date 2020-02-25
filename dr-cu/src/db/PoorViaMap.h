@@ -54,7 +54,7 @@ public:
     PoorViaMapBuilder(vector<vector<vector<std::pair<int, ViaData*>>>>& poorViaMap,
                       const vector<bool>& _usePoorViaMap,
                       const RouteGrid& _routeGrid);
-    void run(const vector<std::pair<BoxOnLayer, int>>& fixObjects);
+    void run(Database const& database, const vector<std::pair<BoxOnLayer, int>>& fixObjects);
 
     static ViaData* createViaData(const std::unordered_set<int>& allowNetIdxs, bool allAllow, bool nonDefaultOnly);
     static void addViaData(vector<std::pair<int, ViaData*>>& rowData,
@@ -68,9 +68,9 @@ private:
     const vector<bool>& usePoorViaMap;
     const RouteGrid& routeGrid;
 
-    void printPoorViaMapInfo();
+    void printPoorViaMapInfo(Database const& database);
 
-    void initPoorViaMapFast(const vector<std::pair<BoxOnLayer, int>>& fixObjects);
+    void initPoorViaMapFast(Database const& database, const vector<std::pair<BoxOnLayer, int>>& fixObjects);
 };
 
 class PoorViaMapRegionBuilder {

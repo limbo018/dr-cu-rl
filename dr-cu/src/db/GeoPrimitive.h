@@ -4,6 +4,8 @@
 
 namespace db {
 
+class Database; 
+
 //  BoxOnLayer
 //  A box on a certain layer: primitive for route guide and pin acesss box
 
@@ -73,7 +75,7 @@ public:
     GridEdge(const GridPoint& nodeU, const GridPoint& nodeV) : u(nodeU), v(nodeV) {}
 
     // two types of GridEdge: 1. via, 2. track segment
-    bool isVia() const;
+    bool isVia(Database const& database) const;
     const GridPoint& lowerGridPoint() const { return u.layerIdx <= v.layerIdx ? u : v; }
     bool isTrackSegment() const;
     bool isWrongWaySegment() const;

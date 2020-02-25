@@ -41,7 +41,7 @@ private:
     std::vector<std::string> _short_format_argv; 
     int _step_cnt{0};
     int irr_limit{4};
-
+    db::Database _database; 
 
     int feed_argv(std::vector<std::string> const& short_format_argv);
     void convert_argv_format(std::vector<std::string> const& short_format_argv);

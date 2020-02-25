@@ -7,6 +7,7 @@
 namespace db {
 
 class ViaData;
+class Database; 
 
 using CostT = double;
 using HistUsageT = double;
@@ -70,11 +71,11 @@ public:
     using ViaMapT = vector<vector<std::multimap<int, int>>>;
     using NDViaMapT = std::unordered_map<GridPoint, const ViaType*>;
 
-    void init();
+    void init(Database& database);
     void clear();
     void stash();
     void reset();
-    void setUnitVioCost(double discount = 1.0);
+    void setUnitVioCost(Database const& database, double discount = 1.0);
 
     // Get unit cost
     inline CostT getUnitViaCost() const { return unitViaCost; }
@@ -86,11 +87,12 @@ public:
     vector<std::pair<utils::BoxT<DBU>, int>> getOvlpFixedMetals(const BoxOnLayer& box, int netIdx) const;
 
     // Get edge cost
-    CostT getEdgeCost(const GridEdge& edge, const int netIdx) const;
-    CostT getEdgeVioCost(const GridEdge& edge, const int netIdx, bool histCost = true) const;
+    CostT getEdgeCost(Database const& database, const GridEdge& edge, const int netIdx) const;
+    CostT getEdgeVioCost(Database const& database, const GridEdge& edge, const int netIdx, bool histCost = true) const;
     // 1. via
-    CostT getViaCost(const GridPoint& via, const int netIdx) const { return unitViaCost + getViaVioCost(via, netIdx); }
-    CostT getViaVioCost(const GridPoint& via,
+    CostT getViaCost(Database const& database, const GridPoint& via, const int netIdx) const;
+    CostT getViaVioCost(Database const& database, 
+                        const GridPoint& via,
                         const int netIdx,
                         bool histCost = true,
                         const ViaType* viaType = nullptr) const;
@@ -123,16 +125,16 @@ public:
     const ViaType& getBestViaTypeForFixed(const utils::PointT<DBU>& viaLoc,
                                           int viaLayerIdx,
                                           int netIdx) const;  // TODO: consider more types of violations
-    void initPoorViaMap(vector<std::pair<BoxOnLayer, int>>& fixedMetalVec);
+    void initPoorViaMap(Database const& database, vector<std::pair<BoxOnLayer, int>>& fixedMetalVec);
     ViaData* getViaData(const GridPoint& via) const;
 
     // 2. wire
-    CostT getWireSegmentCost(const TrackSegment& ts, const int netIdx) const;
-    CostT getWireSegmentVioCost(const TrackSegment& ts, const int netIdx, bool histCost = true) const;
-    CostT getWrongWayWireSegmentVioCost(const WrongWaySegment& wws, const int netIdx, bool histCost) const;
-    vector<CostT> getShortWireSegmentCost(const TrackSegment& ts, int netIdx) const;
-    vector<CostT> getShortWireSegmentVioCost(const TrackSegment& ts, int netIdx, bool histCost = true) const;
-    vector<utils::IntervalT<int>> getEmptyIntvl(const TrackSegment& ts, int netIdx) const;
+    CostT getWireSegmentCost(Database const& database, const TrackSegment& ts, const int netIdx) const;
+    CostT getWireSegmentVioCost(Database const& database, const TrackSegment& ts, const int netIdx, bool histCost = true) const;
+    CostT getWrongWayWireSegmentVioCost(Database const& database, const WrongWaySegment& wws, const int netIdx, bool histCost) const;
+    vector<CostT> getShortWireSegmentCost(Database const& database, const TrackSegment& ts, int netIdx) const;
+    vector<CostT> getShortWireSegmentVioCost(Database const& database, const TrackSegment& ts, int netIdx, bool histCost = true) const;
+    vector<utils::IntervalT<int>> getEmptyIntvl(Database const& database, const TrackSegment& ts, int netIdx) const;
     // 2.1 wire on wires
     vector<int> getShortWireSegmentUsageOnOvlpWire(const TrackSegment& ts, int netIdx) const;
     vector<int> getShortWireSegmentUsageOnOvlpPoorWire(const TrackSegment& ts, int netIdx) const;
@@ -161,7 +163,7 @@ public:
                                    vector<int>& viaCPs) const;
 
     // Use edge
-    void useEdge(const GridEdge& edge, int netIdx);
+    void useEdge(Database const& database, const GridEdge& edge, int netIdx);
     void useVia(const GridPoint& via, int netIdx, ViaMapT& routedViaMap);
     void useVia(const GridPoint& via, int netIdx);
     void markViaType(const GridPoint& via, const ViaType* viaType);
@@ -170,23 +172,23 @@ public:
     void usePoorWireSegment(const TrackSegment& ts, int netIdx);
     void useHistWireSegment(const TrackSegment& ts, int netIdx, HistUsageT usage);
     void useHistWireSegments(const GridBoxOnLayer& gb, int netIdx, HistUsageT usage);
-    void markFixedMetalBatch(vector<std::pair<BoxOnLayer, int>>& fixedMetalVec, int beginIdx, int endIdx);
+    void markFixedMetalBatch(Database const& database, vector<std::pair<BoxOnLayer, int>>& fixedMetalVec, int beginIdx, int endIdx);
 
     // Remove edge
-    void removeEdge(const GridEdge& edge, int netIdx);
+    void removeEdge(Database const& database, const GridEdge& edge, int netIdx);
     void removeVia(const GridPoint& via, int netIdx, ViaMapT& routedViaMap);
     void removeVia(const GridPoint& via, int netIdx);
     void removeWireSegment(const TrackSegment& ts, int netIdx);
     void removeWrongWayWireSegment(const WrongWaySegment& wws, int netIdx);
 
     // Print stat
-    double printAllUsageAndVio() const;
-    double get_score();
+    double printAllUsageAndVio(Database const& database) const;
+    double get_score(Database const& database);
     std::array<double, 4> get_all_vio() const;
     // usage
     void getAllWireUsage(const vector<int>& buckets, vector<int>& wireUsageGrid, vector<DBU>& wireUsageLength) const;
     void getAllViaUsage(const vector<int>& buckets, const ViaMapT& routedViaMap, vector<int>& viaUsage) const;
-    std::pair<double, double> printAllUsage() const;
+    std::pair<double, double> printAllUsage(Database const& database) const;
     std::string getRangeStr(const vector<int>& buckets, int i) const;
     void get_net_wire_vio_usage(std::unordered_map<int, int>& via_usage,
                                 std::unordered_map<int, float>& wire_usage_length,
@@ -200,16 +202,17 @@ public:
                       vector<int>& viaBotWireVios,
                       vector<int>& viaTopWireVios,
                       vector<int>& poorVia) const;
-    std::pair<double, double> printAllVio() const;
+    std::pair<double, double> printAllVio(Database const& database) const;
 
     // for ripup and reroute
-    void addHistCost();
+    void addHistCost(Database const& database);
     void addWireHistCost();
     void addViaHistCost();
-    void fadeHistCost(const vector<int>& exceptedNets);  // excepted because still not routed...
-    void statHistCost() const;
+    void fadeHistCost(Database const& database, const vector<int>& exceptedNets);  // excepted because still not routed...
+    void statHistCost(Database const& database) const;
 
 protected:
+    Database const* database; 
     // Unit cost
     // in contest metric
     CostT unitWireCostRaw;                                       // for each DBU

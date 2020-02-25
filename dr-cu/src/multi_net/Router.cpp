@@ -28,64 +28,64 @@ ostream &operator<<(ostream &os, const MTStat mtStat) {
     return os;
 }
 
-void Router::run() {
+void Router::run(db::Database& database) {
     allNetStatus.resize(database.nets.size(), db::RouteStatus::FAIL_UNPROCESSED);
-    for (iter = 0; iter < db::setting.rrrIterLimit; iter++) {
+    for (iter = 0; iter < database.setting().rrrIterLimit; iter++) {
         log() << std::endl;
         log() << "################################################################" << std::endl;
         log() << "Start RRR iteration " << iter << std::endl;
         log() << std::endl;
-        db::routeStat.clear();
-        vector<int> netsToRoute = getNetsToRoute();
+        database.routeStat().clear();
+        vector<int> netsToRoute = getNetsToRoute(database);
         if (netsToRoute.empty()) {
-            if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+            if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
                 log() << "No net is identified for this iteration of RRR." << std::endl;
                 log() << std::endl;
             }
             break;
         }
-        db::rrrIterSetting.update(iter);
+        database.rrrIterSetting().update(database, iter);
         if (iter > 0) {
             // updateCost should before ripup, otherwise, violated nets have gone
-            updateCost(netsToRoute);
-            ripup(netsToRoute);
+            updateCost(database, netsToRoute);
+            ripup(database, netsToRoute);
         }
-        database.statHistCost();
-        if (db::setting.rrrIterLimit > 1) {
-            double step = (1.0 - db::setting.rrrInitVioCostDiscount) / (db::setting.rrrIterLimit - 1);
-            database.setUnitVioCost(db::setting.rrrInitVioCostDiscount + step * iter);
+        database.statHistCost(database);
+        if (database.setting().rrrIterLimit > 1) {
+            double step = (1.0 - database.setting().rrrInitVioCostDiscount) / (database.setting().rrrIterLimit - 1);
+            database.setUnitVioCost(database, database.setting().rrrInitVioCostDiscount + step * iter);
         }
-        if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
-            db::rrrIterSetting.print();
+        if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+            database.rrrIterSetting().print();
         }
-        route(netsToRoute);
+        route(database, netsToRoute);
         log() << std::endl;
         log() << "Finish RRR iteration " << iter << std::endl;
         log() << "MEM: cur=" << utils::mem_use::get_current() << "MB, peak=" << utils::mem_use::get_peak() << "MB"
               << std::endl;
-        if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
-            printStat(db::setting.rrrWriteEachIter);
+        if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+            printStat(database, database.setting().rrrWriteEachIter);
         }
-        if (db::setting.rrrWriteEachIter) {
-            std::string fn = "iter" + std::to_string(iter) + "_" + db::setting.outputFile;
+        if (database.setting().rrrWriteEachIter) {
+            std::string fn = "iter" + std::to_string(iter) + "_" + database.setting().outputFile;
             printlog("Write result of RRR iter", iter, "to", fn, "...");
-            finish();
+            finish(database);
             database.writeDEF(fn);
-            unfinish();
+            unfinish(database);
         }
     }
-    finish();
+    finish(database);
     log() << std::endl;
     log() << "################################################################" << std::endl;
     log() << "Finish all RRR iterations and PostRoute" << std::endl;
     log() << "MEM: cur=" << utils::mem_use::get_current() << "MB, peak=" << utils::mem_use::get_peak() << "MB"
           << std::endl;
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
-        printStat(true);
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+        printStat(database, true);
     }
 }
 
-vector<int> Router::getNetsToRoute() {
+vector<int> Router::getNetsToRoute(db::Database& database) {
     vector<int> netsToRoute;
     _nets_cost.clear();
     if (iter == 0) {
@@ -99,9 +99,9 @@ vector<int> Router::getNetsToRoute() {
         }
     } else {
         for (auto &net : database.nets) {
-            if (UpdateDB::checkViolation(net)) {
+            if (UpdateDB::checkViolation(database, net)) {
                 netsToRoute.push_back(net.idx);
-                _nets_cost.emplace_back(static_cast<float>(UpdateDB::get_net_vio_cost(net)));
+                _nets_cost.emplace_back(static_cast<float>(UpdateDB::get_net_vio_cost(database, net)));
             }
         }
     }
@@ -109,19 +109,19 @@ vector<int> Router::getNetsToRoute() {
     return netsToRoute;
 }
 
-void Router::ripup(const vector<int> &netsToRoute) {
+void Router::ripup(db::Database& database, const vector<int> &netsToRoute) {
     for (auto netIdx : netsToRoute) {
-        UpdateDB::clearRouteResult(database.nets[netIdx]);
+        UpdateDB::clearRouteResult(database, database.nets[netIdx]);
         allNetStatus[netIdx] = db::RouteStatus::FAIL_UNPROCESSED;
     }
 }
 
-void Router::updateCost(const vector<int> &netsToRoute) {
-    database.addHistCost();
-    database.fadeHistCost(netsToRoute);
+void Router::updateCost(db::Database& database, const vector<int> &netsToRoute) {
+    database.addHistCost(database);
+    database.fadeHistCost(database, netsToRoute);
 }
 
-void Router::route(const vector<int> &netsToRoute) {
+void Router::route(db::Database& database, const vector<int> &netsToRoute) {
     // init SingleNetRouters
     vector<SingleNetRouter> routers;
     routers.reserve(netsToRoute.size());
@@ -130,20 +130,20 @@ void Router::route(const vector<int> &netsToRoute) {
     }
 
     // pre route
-    auto preMT = runJobsMT(netsToRoute.size(), [&](int netIdx) { routers[netIdx].preRoute(); });
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    auto preMT = runJobsMT(database, netsToRoute.size(), [&](int netIdx) { routers[netIdx].preRoute(database); });
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         printlog("preMT", preMT);
-        printStat();
+        printStat(database);
     }
 
     // schedule
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Start multi-thread scheduling. There are " << netsToRoute.size() << " nets to route." << std::endl;
     }
     Scheduler scheduler(routers);
-    const vector<vector<int>> &batches = scheduler.schedule();
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
-        log() << "Finish multi-thread scheduling" << ((db::setting.numThreads == 0) ? " using simple mode" : "")
+    const vector<vector<int>> &batches = scheduler.schedule(database);
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+        log() << "Finish multi-thread scheduling" << ((database.setting().numThreads == 0) ? " using simple mode" : "")
               << ". There will be " << batches.size() << " batches." << std::endl;
         log() << std::endl;
     }
@@ -153,33 +153,33 @@ void Router::route(const vector<int> &netsToRoute) {
     MTStat allMazeMT, allCommitMT, allGetViaTypesMT, allCommitViaTypesMT;
     for (const vector<int> &batch : batches) {
         // 1 maze route
-        auto mazeMT = runJobsMT(batch.size(), [&](int jobIdx) {
+        auto mazeMT = runJobsMT(database, batch.size(), [&](int jobIdx) {
             auto &router = routers[batch[jobIdx]];
-            router.mazeRoute();
+            router.mazeRoute(database);
             allNetStatus[router.dbNet.idx] = router.status;
         });
         allMazeMT += mazeMT;
         // 2 commit nets to DB
-        auto commitMT = runJobsMT(batch.size(), [&](int jobIdx) {
+        auto commitMT = runJobsMT(database, batch.size(), [&](int jobIdx) {
             auto &router = routers[batch[jobIdx]];
             if (!db::isSucc(router.status)) return;
-            router.commitNetToDB();
+            router.commitNetToDB(database);
         });
         allCommitMT += commitMT;
         // 3 get via types
-        allGetViaTypesMT += runJobsMT(batch.size(), [&](int jobIdx) {
+        allGetViaTypesMT += runJobsMT(database, batch.size(), [&](int jobIdx) {
             auto &router = routers[batch[jobIdx]];
             if (!db::isSucc(router.status)) return;
             PostRoute postRoute(router.dbNet);
-            postRoute.getViaTypes();
+            postRoute.getViaTypes(database);
         });
-        allCommitViaTypesMT += runJobsMT(batch.size(), [&](int jobIdx) {
+        allCommitViaTypesMT += runJobsMT(database, batch.size(), [&](int jobIdx) {
             auto &router = routers[batch[jobIdx]];
             if (!db::isSucc(router.status)) return;
-            UpdateDB::commitViaTypes(router.dbNet);
+            UpdateDB::commitViaTypes(database, router.dbNet);
         });
         // 4 stat
-        if (db::setting.multiNetVerbose >= +db::VerboseLevelT::HIGH && db::setting.numThreads != 0) {
+        if (database.setting().multiNetVerbose >= +db::VerboseLevelT::HIGH && database.setting().numThreads != 0) {
             int maxNumVertices = 0;
             for (int i : batch) maxNumVertices = std::max(maxNumVertices, routers[i].localNet.estimatedNumOfVertices);
             log() << "Batch " << iBatch << " done: size=" << batch.size() << ", mazeMT " << mazeMT << ", commitMT "
@@ -187,7 +187,7 @@ void Router::route(const vector<int> &netsToRoute) {
         }
         iBatch++;
     }
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         printlog("allMazeMT", allMazeMT);
         printlog("allCommitMT", allCommitMT);
         printlog("allGetViaTypesMT", allGetViaTypesMT);
@@ -195,71 +195,71 @@ void Router::route(const vector<int> &netsToRoute) {
     }
 }
 
-void Router::finish() {
+void Router::finish(db::Database& database) {
     PostScheduler postScheduler(database.nets);
-    const vector<vector<int>> &batches = postScheduler.schedule();
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    const vector<vector<int>> &batches = postScheduler.schedule(database);
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         printlog("There will be", batches.size(), "batches for getting via types.");
     }
     // 1. redo min area handling
     MTStat allPostMaze2MT;
     for (const vector<int> &batch : batches) {
-        runJobsMT(batch.size(), [&](int jobIdx) {
+        runJobsMT(database, batch.size(), [&](int jobIdx) {
             int netIdx = batch[jobIdx];
             if (!db::isSucc(allNetStatus[netIdx])) return;
-            UpdateDB::clearMinAreaRouteResult(database.nets[netIdx]);
+            UpdateDB::clearMinAreaRouteResult(database, database.nets[netIdx]);
         });
-        allPostMaze2MT += runJobsMT(batch.size(), [&](int jobIdx) {
+        allPostMaze2MT += runJobsMT(database, batch.size(), [&](int jobIdx) {
             int netIdx = batch[jobIdx];
             if (!db::isSucc(allNetStatus[netIdx])) return;
-            PostMazeRoute(database.nets[netIdx]).run2();
+            PostMazeRoute(database.nets[netIdx]).run2(database);
         });
-        runJobsMT(batch.size(), [&](int jobIdx) {
+        runJobsMT(database, batch.size(), [&](int jobIdx) {
             int netIdx = batch[jobIdx];
             if (!db::isSucc(allNetStatus[netIdx])) return;
-            UpdateDB::commitMinAreaRouteResult(database.nets[netIdx]);
+            UpdateDB::commitMinAreaRouteResult(database, database.nets[netIdx]);
         });
     }
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         printlog("allPostMaze2MT", allPostMaze2MT);
     }
     // 2. get via types again
-    for (int iter = 0; iter < db::setting.multiNetSelectViaTypesIter; iter++) {
+    for (int iter = 0; iter < database.setting().multiNetSelectViaTypesIter; iter++) {
         MTStat allGetViaTypesMT, allCommitViaTypesMT;
         for (const vector<int> &batch : batches) {
-            allGetViaTypesMT += runJobsMT(batch.size(), [&](int jobIdx) {
+            allGetViaTypesMT += runJobsMT(database, batch.size(), [&](int jobIdx) {
                 int netIdx = batch[jobIdx];
                 if (!db::isSucc(allNetStatus[netIdx])) return;
                 PostRoute postRoute(database.nets[netIdx]);
                 if (iter == 0) postRoute.considerViaViaVio = false;
-                postRoute.getViaTypes();
+                postRoute.getViaTypes(database);
             });
-            allCommitViaTypesMT += runJobsMT(batch.size(), [&](int jobIdx) {
+            allCommitViaTypesMT += runJobsMT(database, batch.size(), [&](int jobIdx) {
                 int netIdx = batch[jobIdx];
                 if (!db::isSucc(allNetStatus[netIdx])) return;
-                UpdateDB::commitViaTypes(database.nets[netIdx]);
+                UpdateDB::commitViaTypes(database, database.nets[netIdx]);
             });
         }
-        if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+        if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
             printlog("allGetViaTypesMT", allGetViaTypesMT);
             printlog("allCommitViaTypesMT", allCommitViaTypesMT);
         }
     }
     // 3. post route
-    auto postMT = runJobsMT(database.nets.size(), [&](int netIdx) {
+    auto postMT = runJobsMT(database, database.nets.size(), [&](int netIdx) {
         if (!db::isSucc(allNetStatus[netIdx])) return;
         PostRoute postRoute(database.nets[netIdx]);
-        postRoute.run();
+        postRoute.run(database);
     });
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         printlog("postMT", postMT);
     }
     // final open fix
-    if (db::setting.fixOpenBySST) {
+    if (database.setting().fixOpenBySST) {
         int count = 0;
         for (auto &net : database.nets) {
             if (net.defWireSegments.empty() && net.numOfPins() > 1) {
-                connectBySTT(net);
+                connectBySTT(database, net);
                 count++;
             }
         }
@@ -267,91 +267,91 @@ void Router::finish() {
     }
 }
 
-void Router::unfinish() {
-    runJobsMT(database.nets.size(), [&](int netIdx) { database.nets[netIdx].clearPostRouteResult(); });
+void Router::unfinish(db::Database& database) {
+    runJobsMT(database, database.nets.size(), [&](int netIdx) { database.nets[netIdx].clearPostRouteResult(); });
 }
 
-double Router::printStat(bool major) {
+double Router::printStat(db::Database const& database, bool major) {
     double total_score = 0;
     log() << std::endl;
     log() << "----------------------------------------------------------------" << std::endl;
-    db::routeStat.print();
+    database.routeStat().print();
     if (major) {
-        total_score = database.printAllUsageAndVio();
+        total_score = database.printAllUsageAndVio(database);
     }
     log() << "----------------------------------------------------------------" << std::endl;
     log() << std::endl;
     return total_score;
 }
 
-int Router::step() {
-    if (iter < db::setting.rrrIterLimit) {
-        if (db::setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+int Router::step(db::Database& database) {
+    if (iter < database.setting().rrrIterLimit) {
+        if (database.setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
             log() << std::endl;
             log() << "################################################################" << std::endl;
             log() << "Start RRR iteration " << iter << std::endl;
             log() << std::endl;
         }
-        db::routeStat.clear();
-        vector<int> netsToRoute = getNetsToRoute();
+        database.routeStat().clear();
+        vector<int> netsToRoute = getNetsToRoute(database);
         if (netsToRoute.empty()) {
-            if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+            if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
                 log() << "No net is identified for this iteration of RRR." << std::endl;
                 log() << std::endl;
             }
             return -1;
         }
-        db::rrrIterSetting.update(iter);
+        database.rrrIterSetting().update(database, iter);
         if (iter > 0) {
             // updateCost should before ripup, otherwise, violated nets have gone
-            updateCost(netsToRoute);
-//            ripup(netsToRoute);
+            updateCost(database, netsToRoute);
+//            ripup(database, netsToRoute);
         }
-        ripup(netsToRoute);
-        database.statHistCost();
-        if (db::setting.rrrIterLimit > 1) {
-            double step = (1.0 - db::setting.rrrInitVioCostDiscount) / (db::setting.rrrIterLimit - 1);
-            database.setUnitVioCost(db::setting.rrrInitVioCostDiscount + step * iter);
+        ripup(database, netsToRoute);
+        database.statHistCost(database);
+        if (database.setting().rrrIterLimit > 1) {
+            double step = (1.0 - database.setting().rrrInitVioCostDiscount) / (database.setting().rrrIterLimit - 1);
+            database.setUnitVioCost(database, database.setting().rrrInitVioCostDiscount + step * iter);
         }
-        if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
-            db::rrrIterSetting.print();
+        if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+            database.rrrIterSetting().print();
         }
-        route(netsToRoute);
-        if (db::setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+        route(database, netsToRoute);
+        if (database.setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
             log() << std::endl;
             log() << "Finish RRR iteration " << iter << std::endl;
             log() << "MEM: cur=" << utils::mem_use::get_current() << "MB, peak=" << utils::mem_use::get_peak() << "MB"
                   << std::endl;
         }
-        if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
-            printStat(db::setting.rrrWriteEachIter);
+        if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+            printStat(database, database.setting().rrrWriteEachIter);
         }
-        if (db::setting.rrrWriteEachIter) {
-            std::string fn = "iter" + std::to_string(iter) + "_" + db::setting.outputFile;
+        if (database.setting().rrrWriteEachIter) {
+            std::string fn = "iter" + std::to_string(iter) + "_" + database.setting().outputFile;
             printlog("Write result of RRR iter", iter, "to", fn, "...");
-            finish();
+            finish(database);
             database.writeDEF(fn);
-            unfinish();
+            unfinish(database);
         }
         iter++;
         return 0;
     } else {
-        finish();
-        if (db::setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+        finish(database);
+        if (database.setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
             log() << std::endl;
             log() << "################################################################" << std::endl;
             log() << "Finish all RRR iterations and PostRoute" << std::endl;
             log() << "MEM: cur=" << utils::mem_use::get_current() << "MB, peak=" << utils::mem_use::get_peak() << "MB"
                   << std::endl;
         }
-        if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
-            printStat(true);
+        if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+            printStat(database, true);
         }
         return 1;
     }
 }
 
-void Router::reset() {
+void Router::reset(db::Database& database) {
     for (auto &e: _feature) {
         e.assign(Router::Feature_idx::FEA_DIM, 0);
     }
@@ -359,10 +359,10 @@ void Router::reset() {
     vector<int> all_nets;
     for (int i = 0; i < database.nets.size(); ++i)
         all_nets.emplace_back(i);
-    ripup(all_nets);
+    ripup(database, all_nets);
 }
 
-void Router::init() {
+void Router::init(db::Database& database) {
     allNetStatus.resize(database.nets.size(), db::RouteStatus::FAIL_UNPROCESSED);
     _feature.resize(database.nets.size());
     for (auto &e: _feature) {
@@ -371,7 +371,7 @@ void Router::init() {
     iter = 0;
 }
 
-void Router::pre_route(const vector<int> &netsToRoute) {
+void Router::pre_route(db::Database& database, const vector<int> &netsToRoute) {
     // init SingleNetRouters
     _routers.clear();
     _routers.reserve(netsToRoute.size());
@@ -380,22 +380,22 @@ void Router::pre_route(const vector<int> &netsToRoute) {
     }
 
     // pre route
-    auto preMT = runJobsMT(netsToRoute.size(), [&](int netIdx) { _routers[netIdx].preRoute(); });
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    auto preMT = runJobsMT(database, netsToRoute.size(), [&](int netIdx) { _routers[netIdx].preRoute(database); });
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         printlog("preMT", preMT);
-        printStat();
+        printStat(database);
     }
 }
 
-vector<vector<int>> Router::get_nets_feature() {
+vector<vector<int>> Router::get_nets_feature(db::Database& database) {
     Scheduler scheduler(_routers);
-    vector<int> degree = scheduler.get_net_degree();
+    vector<int> degree = scheduler.get_net_degree(database);
 
-    auto reset_mt = runJobsMT(_feature.size(), [&](int i) {
+    auto reset_mt = runJobsMT(database, _feature.size(), [&](int i) {
         _feature.at(i).at(ROUTED) = 0;
     });
 
-    auto feature_mt = runJobsMT(_routers.size(), [&](int i) {
+    auto feature_mt = runJobsMT(database, _routers.size(), [&](int i) {
         auto net_id = _routers.at(i).dbNet.idx;
         _feature.at(net_id).at(ROUTED) = 1;
         _feature.at(net_id).at(SIZE) = _routers.at(i).localNet.estimatedNumOfVertices;
@@ -417,56 +417,56 @@ vector<vector<int>> Router::get_nets_feature() {
     return vector<vector<int>>(_feature);
 }
 
-int Router::prepare() {
+int Router::prepare(db::Database& database) {
     if (!iter)
         allNetStatus.resize(database.nets.size(), db::RouteStatus::FAIL_UNPROCESSED);
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << std::endl;
         log() << "################################################################" << std::endl;
         log() << "Start RRR iteration " << iter << std::endl;
         log() << std::endl;
     }
-    db::routeStat.clear();
-    _nets_to_route = getNetsToRoute();
+    database.routeStat().clear();
+    _nets_to_route = getNetsToRoute(database);
     if (_nets_to_route.empty()) {
-        if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+        if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
             log() << "No net is identified for this iteration of RRR." << std::endl;
             log() << std::endl;
         }
         return -1;
     }
-    db::rrrIterSetting.update(iter);
+    database.rrrIterSetting().update(database, iter);
     if (iter > 0) {
         // updateCost should before ripup, otherwise, violated nets have gone
-        updateCost(_nets_to_route);
+        updateCost(database, _nets_to_route);
         _via_usage.clear();
         _wire_usage_length.clear();
         _layer_usage.clear();
         database.get_net_wire_vio_usage(_via_usage, _wire_usage_length, _layer_usage);
-        ripup(_nets_to_route);
+        ripup(database, _nets_to_route);
     }
-    database.statHistCost();
-    if (db::setting.rrrIterLimit > 1) {
-        double step = (1.0 - db::setting.rrrInitVioCostDiscount) / (db::setting.rrrIterLimit - 1);
-        database.setUnitVioCost(db::setting.rrrInitVioCostDiscount + step * iter);
+    database.statHistCost(database);
+    if (database.setting().rrrIterLimit > 1) {
+        double step = (1.0 - database.setting().rrrInitVioCostDiscount) / (database.setting().rrrIterLimit - 1);
+        database.setUnitVioCost(database, database.setting().rrrInitVioCostDiscount + step * iter);
     }
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
-        db::rrrIterSetting.print();
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+        database.rrrIterSetting().print();
     }
-    pre_route(_nets_to_route);
+    pre_route(database, _nets_to_route);
     // schedule
     return 0;
 }
 
-double Router::route(vector<double> rank_score) {
+double Router::route(db::Database& database, vector<double> rank_score) {
     // schedule
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Start multi-thread scheduling. There are " << _nets_to_route.size() << " nets to route." << std::endl;
     }
     Scheduler scheduler(_routers);
-    const vector<vector<int>> &batches = scheduler.schedule(std::move(rank_score));
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
-        log() << "Finish multi-thread scheduling" << ((db::setting.numThreads == 0) ? " using simple mode" : "")
+    const vector<vector<int>> &batches = scheduler.schedule(database, std::move(rank_score));
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+        log() << "Finish multi-thread scheduling" << ((database.setting().numThreads == 0) ? " using simple mode" : "")
               << ". There will be " << batches.size() << " batches." << std::endl;
         log() << std::endl;
     }
@@ -476,33 +476,33 @@ double Router::route(vector<double> rank_score) {
     MTStat allMazeMT, allCommitMT, allGetViaTypesMT, allCommitViaTypesMT;
     for (const vector<int> &batch : batches) {
         // 1 maze route
-        auto mazeMT = runJobsMT(batch.size(), [&](int jobIdx) {
+        auto mazeMT = runJobsMT(database, batch.size(), [&](int jobIdx) {
             auto &router = _routers[batch[jobIdx]];
-            router.mazeRoute();
+            router.mazeRoute(database);
             allNetStatus[router.dbNet.idx] = router.status;
         });
         allMazeMT += mazeMT;
         // 2 commit nets to DB
-        auto commitMT = runJobsMT(batch.size(), [&](int jobIdx) {
+        auto commitMT = runJobsMT(database, batch.size(), [&](int jobIdx) {
             auto &router = _routers[batch[jobIdx]];
             if (!db::isSucc(router.status)) return;
-            router.commitNetToDB();
+            router.commitNetToDB(database);
         });
         allCommitMT += commitMT;
         // 3 get via types
-        allGetViaTypesMT += runJobsMT(batch.size(), [&](int jobIdx) {
+        allGetViaTypesMT += runJobsMT(database, batch.size(), [&](int jobIdx) {
             auto &router = _routers[batch[jobIdx]];
             if (!db::isSucc(router.status)) return;
             PostRoute postRoute(router.dbNet);
-            postRoute.getViaTypes();
+            postRoute.getViaTypes(database);
         });
-        allCommitViaTypesMT += runJobsMT(batch.size(), [&](int jobIdx) {
+        allCommitViaTypesMT += runJobsMT(database, batch.size(), [&](int jobIdx) {
             auto &router = _routers[batch[jobIdx]];
             if (!db::isSucc(router.status)) return;
-            UpdateDB::commitViaTypes(router.dbNet);
+            UpdateDB::commitViaTypes(database, router.dbNet);
         });
         // 4 stat
-        if (db::setting.multiNetVerbose >= +db::VerboseLevelT::HIGH && db::setting.numThreads != 0) {
+        if (database.setting().multiNetVerbose >= +db::VerboseLevelT::HIGH && database.setting().numThreads != 0) {
             int maxNumVertices = 0;
             for (int i : batch) maxNumVertices = std::max(maxNumVertices, _routers[i].localNet.estimatedNumOfVertices);
             log() << "Batch " << iBatch << " done: size=" << batch.size() << ", mazeMT " << mazeMT << ", commitMT "
@@ -510,32 +510,32 @@ double Router::route(vector<double> rank_score) {
         }
         iBatch++;
     }
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         printlog("allMazeMT", allMazeMT);
         printlog("allCommitMT", allCommitMT);
         printlog("allGetViaTypesMT", allGetViaTypesMT);
         printlog("allCommitViaTypesMT", allCommitViaTypesMT);
     }
-    if (db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << std::endl;
         log() << "Finish RRR iteration " << iter << std::endl;
         log() << "MEM: cur=" << utils::mem_use::get_current() << "MB, peak=" << utils::mem_use::get_peak() << "MB"
               << std::endl;
     }
     double total_score = 0;
-    total_score = get_score();
+    total_score = get_score(database);
 
-    if (db::setting.rrrWriteEachIter) {
-        std::string fn = "iter" + std::to_string(iter) + "_" + db::setting.outputFile;
+    if (database.setting().rrrWriteEachIter) {
+        std::string fn = "iter" + std::to_string(iter) + "_" + database.setting().outputFile;
         printlog("Write result of RRR iter", iter, "to", fn, "...");
-        finish();
+        finish(database);
         database.writeDEF(fn);
-        unfinish();
+        unfinish(database);
     }
     iter ++;
     return total_score;
 }
 
-double Router::get_score() {
-    return database.get_score();
+double Router::get_score(db::Database& database) {
+    return database.get_score(database);
 }

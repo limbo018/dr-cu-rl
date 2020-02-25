@@ -1,4 +1,5 @@
 #include "PoorViaMap.h"
+#include "Database.h"
 
 namespace db {
 
@@ -234,8 +235,8 @@ void PoorViaMapRegionBuilder::genViaData(utils::IntervalT<int> regionTrackRange)
     }
 }
 
-void PoorViaMapBuilder::initPoorViaMapFast(const vector<std::pair<BoxOnLayer, int>>& fixObjects) {
-    if (setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+void PoorViaMapBuilder::initPoorViaMapFast(Database const& database, const vector<std::pair<BoxOnLayer, int>>& fixObjects) {
+    if (database.setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Init poorViaMapFast ..." << std::endl;
     }
     const int initMem = utils::mem_use::get_current();
@@ -253,7 +254,7 @@ void PoorViaMapBuilder::initPoorViaMapFast(const vector<std::pair<BoxOnLayer, in
 
         poorViaMap[i].resize(botLayer.tracks.size());
 
-        const int numThreads = max(1, db::setting.numThreads);
+        const int numThreads = max(1, database.setting().numThreads);
         int numRegions = 40;
 
         int numTrackPerRegion = ceil(botLayer.tracks.size() * 1.0 / numRegions);
@@ -312,15 +313,15 @@ void PoorViaMapBuilder::initPoorViaMapFast(const vector<std::pair<BoxOnLayer, in
         for (int i = 0; i < numThreads; i++) threads[i].join();
     }
 
-    printPoorViaMapInfo();
+    printPoorViaMapInfo(database);
     const int curMem = utils::mem_use::get_current();
-    if (setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (database.setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         printflog("MEM(MB): init/cur=%d/%d, incr=%d\n", initMem, curMem, curMem - initMem);
         log() << std::endl;
     }
 }
 
-void PoorViaMapBuilder::printPoorViaMapInfo() {
+void PoorViaMapBuilder::printPoorViaMapInfo(Database const& database) {
     for (int i = 0, sz = routeGrid.getLayerNum(); i < sz - 1; i++) {
         if (!usePoorViaMap[i]) continue;
 
@@ -347,7 +348,7 @@ void PoorViaMapBuilder::printPoorViaMapInfo() {
         }
 
         int totVia = botLayer.tracks.size() * topLayer.tracks.size();
-        if (setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+        if (database.setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
             printflog("cutlayer%d: poor=%d, one=%d, multi=%d, good=%d, nInterv=%d, totVia=%d, ratio=%.3f\n",
                       i,
                       poor,
@@ -366,5 +367,5 @@ PoorViaMapBuilder::PoorViaMapBuilder(vector<vector<vector<std::pair<int, ViaData
                                      const RouteGrid& _routeGrid)
     : poorViaMap(_poorViaMap), usePoorViaMap(_usePoorViaMap), routeGrid(_routeGrid) {}
 
-void PoorViaMapBuilder::run(const vector<std::pair<BoxOnLayer, int>>& fixObjects) { initPoorViaMapFast(fixObjects); }
+void PoorViaMapBuilder::run(Database const& database, const vector<std::pair<BoxOnLayer, int>>& fixObjects) { initPoorViaMapFast(database, fixObjects); }
 }  // namespace db

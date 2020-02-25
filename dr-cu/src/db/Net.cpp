@@ -1,4 +1,5 @@
 #include "Net.h"
+#include "Database.h"
 
 #include <fstream>
 
@@ -178,8 +179,8 @@ void Net::getPinAccessBoxes(Rsyn::PhysicalLibraryPin phLibPin,
     }
 }
 
-void NetList::init(RsynService& rsynService) {
-    if (db::setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+void NetList::init(Database const& database, RsynService& rsynService) {
+    if (database.setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Init NetList ..." << std::endl;
     }
     nets.clear();
@@ -197,15 +198,15 @@ void NetList::init(RsynService& rsynService) {
         nets.emplace_back(nets.size(), net, rsynService);
         numPins += nets.back().pinAccessBoxes.size();
     }
-    if (setting.dbVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (database.setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "The number of nets is " << nets.size() << std::endl;
         log() << "The number of pins is " << numPins << std::endl;
         log() << std::endl;
     }
 }
 
-void NetList::writeNetTopo(const std::string& filename) {
-    if (!setting.dbWriteDebugFile) {
+void NetList::writeNetTopo(Database const& database, const std::string& filename) {
+    if (!database.setting().dbWriteDebugFile) {
         return;
     }
     log() << "Write net topologies to " << filename << " ..." << std::endl;

@@ -1,74 +1,74 @@
 #include "PreRoute.h"
 
-db::RouteStatus PreRoute::run(int numPitchForGuideExpand) {
+db::RouteStatus PreRoute::run(db::Database& database, int numPitchForGuideExpand) {
     // expand guides uniformally
     auto& guides = localNet.routeGuides;
     for (int i = 0; i < guides.size(); ++i) {
-        int expand = localNet.dbNet.routeGuideVios[i] ? numPitchForGuideExpand : db::setting.defaultGuideExpand;
+        int expand = localNet.dbNet.routeGuideVios[i] ? numPitchForGuideExpand : database.setting().defaultGuideExpand;
         database.expandBox(guides[i], numPitchForGuideExpand);
     }
 
     // add diff-layer guides
-    if (db::rrrIterSetting.addDiffLayerGuides) {
+    if (database.rrrIterSetting().addDiffLayerGuides) {
         int oriSize = guides.size();
         for (int i = 0; i < oriSize; ++i) {
             int j = guides[i].layerIdx;
-            if (localNet.dbNet.routeGuideVios[i] >= db::setting.diffLayerGuideVioThres) {
+            if (localNet.dbNet.routeGuideVios[i] >= database.setting().diffLayerGuideVioThres) {
                 if (j > 2) guides.emplace_back(j - 1, guides[i]);  // do not add to layers 0, 1
                 if ((j + 1) < database.getLayerNum()) guides.emplace_back(j + 1, guides[i]);
-                db::routeStat.increment(db::RouteStage::PRE, db::MiscRouteEvent::ADD_DIFF_LAYER_GUIDE_1, 1);
+                database.routeStat().increment(db::RouteStage::PRE, db::MiscRouteEvent::ADD_DIFF_LAYER_GUIDE_1, 1);
             }
-            if (localNet.dbNet.routeGuideVios[i] >= db::setting.diffLayerGuideVioThres * 2) {
+            if (localNet.dbNet.routeGuideVios[i] >= database.setting().diffLayerGuideVioThres * 2) {
                 if (j > 3) guides.emplace_back(j - 2, guides[i]);  // do not add to layers 0, 1
                 if ((j + 2) < database.getLayerNum()) guides.emplace_back(j + 2, guides[i]);
-                db::routeStat.increment(db::RouteStage::PRE, db::MiscRouteEvent::ADD_DIFF_LAYER_GUIDE_2, 1);
+                database.routeStat().increment(db::RouteStage::PRE, db::MiscRouteEvent::ADD_DIFF_LAYER_GUIDE_2, 1);
             }
         }
     }
 
     // expand guides by cross layer connection
-    expandGuidesToMargin();
+    expandGuidesToMargin(database);
 
     db::RouteStatus status = db::RouteStatus::SUCC_NORMAL;
     if (localNet.numOfPins() < 2) {
         status = db::RouteStatus::SUCC_ONE_PIN;
     } else {
         // expand guides to cover pin
-        status = expandGuidesToCoverPins();
+        status = expandGuidesToCoverPins(database);
         if (db::isSucc(status)) {
             // init localNet and check
-            localNet.initGridBoxes();
-            localNet.initConn(localNet.gridPinAccessBoxes, localNet.gridRouteGuides);
-            localNet.initNumOfVertices();
+            localNet.initGridBoxes(database);
+            localNet.initConn(database, localNet.gridPinAccessBoxes, localNet.gridRouteGuides);
+            localNet.initNumOfVertices(database);
 
-            if (!localNet.checkPin()) {
+            if (!localNet.checkPin(database)) {
                 status = db::RouteStatus::FAIL_PIN_OUT_OF_GRID;
             } else if (!localNet.checkPinGuideConn()) {
                 status = db::RouteStatus::FAIL_DETACHED_PIN;
-            } else if (!checkGuideConnTrack()) {
+            } else if (!checkGuideConnTrack(database)) {
                 status = db::RouteStatus::FAIL_DETACHED_GUIDE;
             }
         }
     }
 
-    printWarnMsg(status, localNet.dbNet);
+    printWarnMsg(database, status, localNet.dbNet);
     return status;
 }
 
-db::RouteStatus PreRoute::runIterative() {
-    db::RouteStatus status = run(db::rrrIterSetting.defaultGuideExpand);
+db::RouteStatus PreRoute::runIterative(db::Database& database) {
+    db::RouteStatus status = run(database, database.rrrIterSetting().defaultGuideExpand);
 
     int iter = 0;
-    int numPitchForGuideExpand = db::rrrIterSetting.defaultGuideExpand;
+    int numPitchForGuideExpand = database.rrrIterSetting().defaultGuideExpand;
     utils::timer singleNetTimer;
-    while (status == +db::RouteStatus::FAIL_DETACHED_GUIDE && iter < db::setting.guideExpandIterLimit) {
+    while (status == +db::RouteStatus::FAIL_DETACHED_GUIDE && iter < database.setting().guideExpandIterLimit) {
         iter++;
         numPitchForGuideExpand += iter;
 
-        status = run(numPitchForGuideExpand);
+        status = run(database, numPitchForGuideExpand);
     }
 
-    if (iter >= 1 && db::setting.multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
+    if (iter >= 1 && database.setting().multiNetVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Warning: Net " << localNet.getName() << " expands " << iter << " iterations"
               << ", which takes " << singleNetTimer.elapsed() << " s in total." << std::endl;
         if (status == +db::RouteStatus::FAIL_DETACHED_GUIDE) {
@@ -76,11 +76,11 @@ db::RouteStatus PreRoute::runIterative() {
         }
     }
 
-    db::routeStat.increment(db::RouteStage::PRE, status);
+    database.routeStat().increment(db::RouteStage::PRE, status);
     return status;
 }
 
-void PreRoute::expandGuidesToMargin() {
+void PreRoute::expandGuidesToMargin(db::Database const& database) {
     vector<db::BoxOnLayer>& guides = localNet.routeGuides;
     vector<vector<int>> crossLayerConn(guides.size());
     for (unsigned g1 = 0; g1 < guides.size(); g1++) {
@@ -106,7 +106,7 @@ void PreRoute::expandGuidesToMargin() {
     }
 }
 
-db::RouteStatus PreRoute::expandGuidesToCoverPins() {
+db::RouteStatus PreRoute::expandGuidesToCoverPins(db::Database& database) {
     db::RouteStatus status = db::RouteStatus::SUCC_NORMAL;
     for (int i = 0; i < localNet.numOfPins(); ++i) {
         int bestAB = -1;
@@ -135,14 +135,14 @@ db::RouteStatus PreRoute::expandGuidesToCoverPins() {
                 localNet.routeGuides[bestGuide] = {
                     localNet.routeGuides[bestGuide].layerIdx,
                     localNet.routeGuides[bestGuide].UnionWith(localNet.pinAccessBoxes[i][bestAB])};
-                    db::routeStat.increment(db::RouteStage::PRE, db::MiscRouteEvent::FIX_DETACHED_PIN, 1);
+                    database.routeStat().increment(db::RouteStage::PRE, db::MiscRouteEvent::FIX_DETACHED_PIN, 1);
             }
         }
     }
     return status;
 }
 
-bool PreRoute::checkGuideConnTrack() const {
+bool PreRoute::checkGuideConnTrack(db::Database const& database) const {
     // init to all false
     vector<char> pinVisited(localNet.pinGuideConn.size(), false);
     vector<vector<char>> guideVisited(localNet.guideConn.size());
