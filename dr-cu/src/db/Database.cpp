@@ -4,14 +4,14 @@
 
 namespace db {
 
-void Database::init() {
+void Database::init(Rsyn::Session& session) {
     if (this->setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << std::endl;
         log() << "################################################################" << std::endl;
         log() << "Start initializing database" << std::endl;
         log() << std::endl;
     }
-    rsynService.init();
+    rsynService.init(session);
 
     auto dieBound = rsynService.physicalDesign.getPhysicalDie().getBounds();
     dieRegion = getBoxFromRsynBounds(dieBound);
@@ -20,11 +20,11 @@ void Database::init() {
         log() << std::endl;
     }
 
-    RouteGrid::init(*this);
+    RouteGrid::init(*this, session);
 
-    NetList::init(*this, rsynService);
+    NetList::init(*this, rsynService, session);
 
-    markPinAndObsOccupancy();
+    markPinAndObsOccupancy(session);
 
     initMTSafeMargin();
 
@@ -279,7 +279,7 @@ void Database::writeDEF(const std::string& filename) {
     defParser.writeFullDEF(filename, def);
 }
 
-void Database::markPinAndObsOccupancy() {
+void Database::markPinAndObsOccupancy(Rsyn::Session& session) {
     if (this->setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Mark pin & obs occupancy on RouteGrid ..." << std::endl;
     }
@@ -296,7 +296,6 @@ void Database::markPinAndObsOccupancy() {
     }
     // Mark dangling pins
     // minor TODO: port?
-    const Rsyn::Session session;
     const Rsyn::PhysicalDesign& physicalDesign =
         static_cast<Rsyn::PhysicalService*>(session.getService("rsyn.physical"))->getPhysicalDesign();
     const DBU libDBU = physicalDesign.getDatabaseUnits(Rsyn::LIBRARY_DBU);

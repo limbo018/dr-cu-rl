@@ -20,7 +20,7 @@ class Database : public RouteGrid, public NetList {
 public:
     utils::BoxT<DBU> dieRegion;
 
-    void init();
+    void init(Rsyn::Session& session);
     void clear() { RouteGrid::clear(); }
     void reset() { RouteGrid::reset(); }
     void stash() { RouteGrid::stash(); }
@@ -48,7 +48,7 @@ private:
     RouteStat _routeStat; 
 
     // mark pin and obstacle occupancy on RouteGrid
-    void markPinAndObsOccupancy();
+    void markPinAndObsOccupancy(Rsyn::Session& session);
     // mark off-grid vias as obstacles
     void addPinViaMetal(vector<std::pair<BoxOnLayer, int>>& fixedMetalVec);
 

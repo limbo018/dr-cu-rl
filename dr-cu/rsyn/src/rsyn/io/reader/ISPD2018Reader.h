@@ -24,11 +24,11 @@ class RoutingGuide;
 	
 class ISPD2018Reader : public Reader {
 public:
-	ISPD2018Reader() = default;
-	virtual bool load(const Rsyn::Json& params) override;
+	ISPD2018Reader() = default; 
+	virtual bool load(Rsyn::Session* sess, const Rsyn::Json& params) override;
 	
 private:
-	Session session;
+	Session* session;
 	
 	std::string lefFile;
 	std::string defFile;

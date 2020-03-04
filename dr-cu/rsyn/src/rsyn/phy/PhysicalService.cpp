@@ -18,8 +18,7 @@
 
 namespace Rsyn {
 
-void PhysicalService::start(const Rsyn::Json &params) {
-	Rsyn::Session session;
+void PhysicalService::start(Rsyn::Session& session, const Rsyn::Json &params) {
 	
 	clsDesign = session.getDesign();
 	clsPhysicalDesign.initPhysicalDesign(clsDesign, params);

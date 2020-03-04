@@ -1,13 +1,13 @@
 #include "Drcu.h"
 
 void Drcu::init(std::vector<std::string> const& argv) {
-    Rsyn::Session::init();
+    _session.init();
     _argc = argv.size();
     _short_format_argv = argv; 
     feed_argv(_short_format_argv);
     _database.setting().makeItSilent();
     init_ispd_flow();
-    _database.init();
+    _database.init(_session);
     _database.setting().adapt(_database);
     _router.init(_database);
     for (auto &net: _database.nets) {
@@ -185,8 +185,6 @@ void Drcu::convert_argv_format(std::vector<std::string> const& short_format_argv
 void Drcu::init_ispd_flow() {
     //    _database.setting().makeItSilent();
 
-    Rsyn::Session session;
-
     // Parse options
     // required
     std::string lefFile = _vm.at("lef").as<std::string>();
@@ -271,7 +269,7 @@ void Drcu::init_ispd_flow() {
         log() << "################################################################" << std::endl;
         log() << "Start reading benchmarks" << std::endl;
     }
-    reader.load(params);
+    reader.load(&_session, params);
     if (_database.setting().dbVerbose >= +db::VerboseLevelT::HIGH) {
         log() << "Finish reading benchmarks" << std::endl;
         log() << "MEM: cur=" << utils::mem_use::get_current() << "MB, peak=" << utils::mem_use::get_peak() << "MB"

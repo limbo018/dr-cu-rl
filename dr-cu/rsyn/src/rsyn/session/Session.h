@@ -84,36 +84,17 @@ struct SessionData {
 class Session : public Rsyn::Proxy<SessionData> {
 public:
 	Session() {
-		data = sessionData;
-	};
-	
-	Session(std::nullptr_t) { 
 		data = nullptr;
-	}
+	};
 	
 	Session &operator=(const Session &other) {
 		data = other.data;
 		return *this;
 	}	
 	
-	static void init();
-
-	//! @note To prevent "static variable order initialization fiasco", the
-	//        static variable signaling that the engine was initialized is
-	//        stored inside this function. In this way, we can guarantee it will
-	//        be initialized to false before being used.
-	static bool checkInitialized(const bool markAsInitialized = false, const bool reset = false) {
-		static bool sessionInitialized = false;
-		if (markAsInitialized)
-			sessionInitialized = true;
-		if(reset)
-		    sessionInitialized = false;
-		return sessionInitialized;
-	} // end method
+	void init();
 
 private:
-
-	static SessionData * sessionData;
 
 	////////////////////////////////////////////////////////////////////////////
 	// Session Variables
@@ -121,37 +102,37 @@ private:
 
 public:
 
-	static void setSessionVariable(const std::string &name, const Rsyn::Json &value) {
-		sessionData->clsSessionVariables[name] = value;
+	void setSessionVariable(const std::string &name, const Rsyn::Json &value) {
+		data->clsSessionVariables[name] = value;
 	} // end method
 
-	static void unsetSessionVariable(const std::string &name) {
-		sessionData->clsSessionVariables.erase(name);
+	void unsetSessionVariable(const std::string &name) {
+		data->clsSessionVariables.erase(name);
 	} // end method
 
-	static const bool getSessionVariableAsBool(const std::string &name, const bool defaultValue = false) {
-		auto it = sessionData->clsSessionVariables.find(name);
-		return (it != sessionData->clsSessionVariables.end())? it->second.get<bool>() : defaultValue;
+	const bool getSessionVariableAsBool(const std::string &name, const bool defaultValue = false) {
+		auto it = data->clsSessionVariables.find(name);
+		return (it != data->clsSessionVariables.end())? it->second.get<bool>() : defaultValue;
 	} // end method
 
-	static const int getSessionVariableAsInteger(const std::string &name, const int defaultValue = 0) {
-		auto it = sessionData->clsSessionVariables.find(name);
-		return (it != sessionData->clsSessionVariables.end())? it->second.get<int>() : defaultValue;
+	const int getSessionVariableAsInteger(const std::string &name, const int defaultValue = 0) {
+		auto it = data->clsSessionVariables.find(name);
+		return (it != data->clsSessionVariables.end())? it->second.get<int>() : defaultValue;
 	} // end method
 
-	static const float getSessionVariableAsFloat(const std::string &name, const float defaultValue = 0.0f) {
-		auto it = sessionData->clsSessionVariables.find(name);
-		return (it != sessionData->clsSessionVariables.end())? it->second.get<float>() : defaultValue;
+	const float getSessionVariableAsFloat(const std::string &name, const float defaultValue = 0.0f) {
+		auto it = data->clsSessionVariables.find(name);
+		return (it != data->clsSessionVariables.end())? it->second.get<float>() : defaultValue;
 	} // end method
 
-	static const std::string getSessionVariableAsString(const std::string &name, const std::string &defaultValue = "") {
-		auto it = sessionData->clsSessionVariables.find(name);
-		return (it != sessionData->clsSessionVariables.end())? it->second.get<std::string>() : defaultValue;
+	const std::string getSessionVariableAsString(const std::string &name, const std::string &defaultValue = "") {
+		auto it = data->clsSessionVariables.find(name);
+		return (it != data->clsSessionVariables.end())? it->second.get<std::string>() : defaultValue;
 	} // end method
 
-	static const Rsyn::Json getSessionVariableAsJson(const std::string &name, const Rsyn::Json &defaultValue = {}) {
-		auto it = sessionData->clsSessionVariables.find(name);
-		return (it != sessionData->clsSessionVariables.end())? it->second : defaultValue;
+	const Rsyn::Json getSessionVariableAsJson(const std::string &name, const Rsyn::Json &defaultValue = {}) {
+		auto it = data->clsSessionVariables.find(name);
+		return (it != data->clsSessionVariables.end())? it->second : defaultValue;
 	} // end method
 	
 	////////////////////////////////////////////////////////////////////////////
@@ -159,7 +140,7 @@ public:
 	////////////////////////////////////////////////////////////////////////////
 
 	// Register services.
-	static void registerServices();
+	void registerServices();
 
 public:
 	
@@ -186,24 +167,24 @@ public:
 		
 	// Register a service.
 	template<typename T>
-	static void registerService(const std::string &name) {
-		auto it = sessionData->clsServiceInstanciationFunctions.find(name);
-		if (it != sessionData->clsServiceInstanciationFunctions.end()) {
+	void registerService(const std::string &name) {
+		auto it = data->clsServiceInstanciationFunctions.find(name);
+		if (it != data->clsServiceInstanciationFunctions.end()) {
 			std::cout << "ERROR: Service '" << name << "' was already "
 					"registered.\n";
 			std::exit(1);
 		} else {
-			sessionData->clsServiceInstanciationFunctions[name] = []() -> Service *{
+			data->clsServiceInstanciationFunctions[name] = []() -> Service *{
 				return new T();
 			};
 		} // end else
 	} // end method
 	
 	// Start a service.
-	static bool startService(const std::string &name, const Rsyn::Json &params = {}, const bool dontErrorOut = false);
+	bool startService(const std::string &name, const Rsyn::Json &params = {}, const bool dontErrorOut = false);
 	
 	// Gets a running service.
-	static ServiceHandler getService(const std::string &name,
+	ServiceHandler getService(const std::string &name,
 			const ServiceRequestType requestType = SERVICE_MANDATORY) {
 		Service *service = getServiceInternal(name);
 		if (!service && (requestType == SERVICE_MANDATORY)) {
@@ -214,34 +195,34 @@ public:
 	} // end method
 
 	// Checks if a service is registered.
-	static bool isServiceRegistered(const std::string &name) {
-		auto it = sessionData->clsServiceInstanciationFunctions.find(name);
-		return  (it != sessionData->clsServiceInstanciationFunctions.end());
+	bool isServiceRegistered(const std::string &name) {
+		auto it = data->clsServiceInstanciationFunctions.find(name);
+		return  (it != data->clsServiceInstanciationFunctions.end());
 	} // end method
 
 	// Checks if a service is running.
-	static bool isServiceRunning(const std::string &name) {
+	bool isServiceRunning(const std::string &name) {
 		return getServiceInternal(name) != nullptr;
 	} // end method
 	
 private:
 	
-	static Service * getServiceInternal(const std::string &name) {
-		auto it = sessionData->clsRunningServices.find(name);
-		return it == sessionData->clsRunningServices.end()? nullptr : it->second;
+	Service * getServiceInternal(const std::string &name) {
+		auto it = data->clsRunningServices.find(name);
+		return it == data->clsRunningServices.end()? nullptr : it->second;
 	} // end method
 
-	static void listService(std::ostream & out = std::cout) {
+	void listService(std::ostream & out = std::cout) {
 		out<<"List of services ";
 		out<<"([R] -> Running, [S] -> Stopped):\n";
 		// print only running services
-		for (std::pair<std::string, ServiceInstantiatonFunction> srv : sessionData->clsServiceInstanciationFunctions) {
+		for (std::pair<std::string, ServiceInstantiatonFunction> srv : data->clsServiceInstanciationFunctions) {
 			if (!isServiceRunning(srv.first))
 				continue;
 			out << "\t[R] " << srv.first << "\n";
 		} // end for 
 		// print only stopped services 
-		for (std::pair<std::string, ServiceInstantiatonFunction> srv : sessionData->clsServiceInstanciationFunctions) {
+		for (std::pair<std::string, ServiceInstantiatonFunction> srv : data->clsServiceInstanciationFunctions) {
 			if (isServiceRunning(srv.first))
 				continue;
 			out << "\t[S] "<<srv.first << "\n";
@@ -253,47 +234,47 @@ private:
 	// Reader
 	////////////////////////////////////////////////////////////////////////////
 private:
-	static void listReader(std::ostream & out = std::cout) {
+	void listReader(std::ostream & out = std::cout) {
 		out<<"List of registered Readers:\n";
-		for(std::pair<std::string, ReaderInstantiatonFunction> reader : sessionData->clsReaders) {
+		for(std::pair<std::string, ReaderInstantiatonFunction> reader : data->clsReaders) {
 			out<<"\t"<<reader.first<<"\n";
 		} // end for 
 		out<<"--------------------------------------\n";
 	} /// end method
 
 	// Register loader.
-	static void registerReaders();
+	void registerReaders();
 
 public:
 		
 	// Register a loader.
 	template<typename T>
-	static void registerReader(const std::string &name) {
-		auto it = sessionData->clsReaders.find(name);
-		if (it != sessionData->clsReaders.end()) {
+	void registerReader(const std::string &name) {
+		auto it = data->clsReaders.find(name);
+		if (it != data->clsReaders.end()) {
 			std::cout << "ERROR: Reader '" << name << "' was already "
 					"registered.\n";
 			std::exit(1);
 		} else {
-			sessionData->clsReaders[name] = []() -> Reader *{
+			data->clsReaders[name] = []() -> Reader *{
 				return new T();
 			};
 		} // end else
 	} // end method
 	
 	// Run an loader.
-	static void runReader(const std::string &name, const Rsyn::Json &params = {});
+	void runReader(const std::string &name, const Rsyn::Json &params = {});
 	
 	////////////////////////////////////////////////////////////////////////////
 	// Misc
 	////////////////////////////////////////////////////////////////////////////
 
-	static Rsyn::Design getDesign();
-	static Rsyn::Library getLibrary();
-	static Rsyn::Module getTopModule();
-	static Rsyn::PhysicalDesign getPhysicalDesign();
+	Rsyn::Design getDesign();
+	Rsyn::Library getLibrary();
+	Rsyn::Module getTopModule();
+	Rsyn::PhysicalDesign getPhysicalDesign();
 
-	static const std::string &getInstallationPath() { return sessionData->clsInstallationPath; }
+	const std::string &getInstallationPath() { return data->clsInstallationPath; }
 
 	////////////////////////////////////////////////////////////////////////////
 	// Utilities
@@ -301,7 +282,7 @@ public:
 
 private:
 
-	static std::string mergePathAndFileName(const std::string &path, const std::string &fileName);
+	std::string mergePathAndFileName(const std::string &path, const std::string &fileName);
 
 public:
 
@@ -311,30 +292,6 @@ public:
 	//!        the one stored internally in the current path list.
 	std::string findFile(const std::string fileName, const std::string extraPath = "");
 	
-}; // end class
-
-////////////////////////////////////////////////////////////////////////////////
-// Startup
-////////////////////////////////////////////////////////////////////////////////
-
-// Helper class used to perform component initialization during the application
-// startup. Declare a startup object in a cpp file:
-//
-// Rsyn::Startup startup([]{
-//     Rsyn::Session::registerService(...);
-//     Rsyn::Session::registerMessage(...);
-// }); // end startup
-//
-// This will construct a global object that will be called during the
-// application initialization.
-
-class Startup {
-public:
-	Startup(std::function<void()> f) {
-		if (!Session::checkInitialized())
-			Session::init();
-		f();
-	} // end constructor
 }; // end class
 
 } // end namespace

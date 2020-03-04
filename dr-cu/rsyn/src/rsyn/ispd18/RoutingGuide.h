@@ -32,7 +32,6 @@ namespace Rsyn {
 
 class RoutingGuide : public Rsyn::Service {
 protected:
-	Rsyn::Session clsSession;
 	Rsyn::Design clsDesign;
 	Rsyn::Module clsModule;
 	Rsyn::PhysicalDesign clsPhDesign;
@@ -40,7 +39,7 @@ protected:
 	bool clsInitialized  = false;
 public:
 	RoutingGuide() = default;
-	void start(const Rsyn::Json &params);
+	void start(Rsyn::Session& session, const Rsyn::Json &params);
 	void stop();
 	
 	void loadGuides(const GuideDscp & dscp);

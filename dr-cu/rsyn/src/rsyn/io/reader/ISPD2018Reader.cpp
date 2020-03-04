@@ -23,8 +23,9 @@
 
 namespace Rsyn {
 	
-bool ISPD2018Reader::load(const Rsyn::Json& params) {
-	Rsyn::Session session;
+bool ISPD2018Reader::load(Rsyn::Session* sess, const Rsyn::Json& params) {
+
+    session = sess; 
 
 	std::string path = params.value("path", "");
 				
@@ -32,19 +33,19 @@ bool ISPD2018Reader::load(const Rsyn::Json& params) {
 		std::cout << "[ERROR] LEF file not specified...\n";
 		return false;
 	} // end if
-	lefFile = session.findFile(params.value("lefFile", ""), path);
+	lefFile = session->findFile(params.value("lefFile", ""), path);
 	
 	if (!params.count("defFile")) {
 		std::cout << "[ERROR] DEF file not specified...\n";
 		return false;
 	} // end if
-	defFile = session.findFile(params.value("defFile", ""), path);
+	defFile = session->findFile(params.value("defFile", ""), path);
 	
 	if (!params.count("guideFile")) {
 		std::cout << "[ERROR] Guide file not specified...\n";
 		return false;
 	} // end if
-	guideFile = session.findFile(params.value("guideFile", ""), path);
+	guideFile = session->findFile(params.value("guideFile", ""), path);
 	
 	parsingFlow();
 	return true;
@@ -79,13 +80,13 @@ void ISPD2018Reader::parseGuideFile() {
 	GuideDscp guideDescriptor;
 	GuideParser guideParser;
 	guideParser.parse(guideFile, guideDescriptor);
-	session.startService("rsyn.routingGuide");
-	routingGuide = (RoutingGuide*) session.getService("rsyn.routingGuide");
+	session->startService("rsyn.routingGuide");
+	routingGuide = (RoutingGuide*) session->getService("rsyn.routingGuide");
 	routingGuide->loadGuides(guideDescriptor);
 } // end method
 
 void ISPD2018Reader::populateDesign() {
-	Rsyn::Design design = session.getDesign();
+	Rsyn::Design design = session->getDesign();
 
 	Reader::populateRsyn(lefDescriptor, defDescriptor, design);
 
@@ -93,8 +94,8 @@ void ISPD2018Reader::populateDesign() {
 	physicalDesignConfiguration["clsEnableMergeRectangles"] = false;
 	physicalDesignConfiguration["clsEnableNetPinBoundaries"] = true;
 	physicalDesignConfiguration["clsEnableRowSegments"] = true;
-	session.startService("rsyn.physical", physicalDesignConfiguration);
-	Rsyn::PhysicalDesign physicalDesign = session.getPhysicalDesign();
+	session->startService("rsyn.physical", physicalDesignConfiguration);
+	Rsyn::PhysicalDesign physicalDesign = session->getPhysicalDesign();
 	physicalDesign.loadLibrary(lefDescriptor);
 	physicalDesign.loadDesign(defDescriptor);
 	physicalDesign.updateAllNetBounds(false);

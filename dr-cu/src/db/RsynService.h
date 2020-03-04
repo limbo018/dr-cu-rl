@@ -12,8 +12,7 @@ public:
     Rsyn::Design design;
     Rsyn::Module module;
 
-    void init() {
-        Rsyn::Session session;
+    void init(Rsyn::Session& session) {
 
         physicalService = session.getService("rsyn.physical");
         routeGuideService = session.getService("rsyn.routingGuide");

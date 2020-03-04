@@ -25,12 +25,12 @@
 
 namespace Rsyn {
 
-void RoutingGuide::start(const Rsyn::Json &params) {
+void RoutingGuide::start(Rsyn::Session& session, const Rsyn::Json &params) {
 	if(clsInitialized)
 		return;
-	clsDesign = clsSession.getDesign();
-	clsModule = clsSession.getTopModule();
-	clsPhDesign = clsSession.getPhysicalDesign();
+	clsDesign = session.getDesign();
+	clsModule = session.getTopModule();
+	clsPhDesign = session.getPhysicalDesign();
 
 	clsGuides = clsDesign.createAttribute();
 

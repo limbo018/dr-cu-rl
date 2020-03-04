@@ -4,11 +4,11 @@
 
 namespace db {
 
-void RouteGrid::init(Database& database) {
+void RouteGrid::init(Database& database, Rsyn::Session& session) {
     if (database.setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Init RouteGrid ..." << std::endl;
     }
-    LayerList::init(database);
+    LayerList::init(database, session);
     // Fixed metal
     fixedMetals.resize(layers.size());
     // Wire

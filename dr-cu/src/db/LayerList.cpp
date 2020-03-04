@@ -5,8 +5,7 @@
 
 namespace db {
 
-void LayerList::init(Database const& database) {
-    const Rsyn::Session session;
+void LayerList::init(Database const& database, Rsyn::Session& session) {
     Rsyn::PhysicalDesign physicalDesign =
         static_cast<Rsyn::PhysicalService*>(session.getService("rsyn.physical"))->getPhysicalDesign();
     const DBU libDBU = physicalDesign.getDatabaseUnits(Rsyn::LIBRARY_DBU);

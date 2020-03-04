@@ -71,7 +71,7 @@ public:
     using ViaMapT = vector<vector<std::multimap<int, int>>>;
     using NDViaMapT = std::unordered_map<GridPoint, const ViaType*>;
 
-    void init(Database& database);
+    void init(Database& database, Rsyn::Session& session);
     void clear();
     void stash();
     void reset();

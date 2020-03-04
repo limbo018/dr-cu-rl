@@ -30,7 +30,7 @@ enum ServiceRequestType {
 
 class Service {
 public:
-	virtual void start(const Rsyn::Json &params) = 0;
+	virtual void start(Rsyn::Session& session, const Rsyn::Json &params) = 0;
 	virtual void stop() = 0;
 }; // end class
 

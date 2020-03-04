@@ -10,7 +10,7 @@ class Database;
 
 class LayerList {
 public:
-    void init(Database const& database);
+    void init(Database const& database, Rsyn::Session& session);
 
     // Check whether a geo primitive is valid
     bool isValid(const GridPoint& gridPt) const;

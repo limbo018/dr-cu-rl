@@ -30,7 +30,7 @@ private:
 public:
 	
 	//! @brief Start method to the Rsyn::PhysicalDesign service
-	virtual void start(const Rsyn::Json &params);
+	virtual void start(Rsyn::Session& session, const Rsyn::Json &params);
 	
 	//! @brief Stop method to the Rsyn::PhysicalDesign service
 	virtual void stop();

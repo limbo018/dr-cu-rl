@@ -26,26 +26,19 @@
 
 namespace Rsyn {
 
-static Startup initEngine([]{
-	// This will ensure the engine singleton gets initialized when the program
-	// starts.
-});
-
-// -----------------------------------------------------------------------------
-
-SessionData * Session::sessionData = nullptr;
-
 // -----------------------------------------------------------------------------
 
 void Session::init() {
-	if (checkInitialized()) return;
+    if (data) {
+        delete data; 
+    }
 
 	std::setlocale(LC_ALL, "en_US.UTF-8");
 
-	sessionData = new SessionData();
+	data = new SessionData();
 
 	// TODO: hard coded
-	sessionData->clsInstallationPath = "../../rsyn/install";
+	data->clsInstallationPath = "../../rsyn/install";
 
 	// Register services
 	registerServices();
@@ -54,25 +47,24 @@ void Session::init() {
 	registerReaders();
 	
 	// Create design.
-	sessionData->clsDesign.create("__Root_Design__");
+	data->clsDesign.create("__Root_Design__");
 
 	// Create library
-	sessionData->clsLibrary = Library(new LibraryData);
-	sessionData->clsLibrary->designData = sessionData->clsDesign.data;
+	data->clsLibrary = Library(new LibraryData);
+	data->clsLibrary->designData = data->clsDesign.data;
 
-	checkInitialized(true);
 } // end constructor
 
 // -----------------------------------------------------------------------------
 
 Rsyn::Design Session::getDesign() {
-	return sessionData->clsDesign;
+	return data->clsDesign;
 } // end method
 
 // -----------------------------------------------------------------------------
 
 Rsyn::Library Session::getLibrary() {
-	return sessionData->clsLibrary;
+	return data->clsLibrary;
 } // end method
 
 // -----------------------------------------------------------------------------
@@ -120,7 +112,7 @@ std::string Session::findFile(const std::string fileName, const std::string extr
 	} // end if
 
 	// Check if the file exists in the paths.
-	for (const std::string &path : sessionData->clsPaths) {
+	for (const std::string &path : data->clsPaths) {
 		const std::string fullFileName = mergePathAndFileName(path, fileName);
 		if (boost::filesystem::exists(fullFileName)) {
 			return fullFileName;
@@ -135,13 +127,13 @@ std::string Session::findFile(const std::string fileName, const std::string extr
 
 void
 Session::runReader(const std::string &name, const Rsyn::Json &params) {
-	auto it = sessionData->clsReaders.find(name);
-	if (it == sessionData->clsReaders.end()) {
+	auto it = data->clsReaders.find(name);
+	if (it == data->clsReaders.end()) {
 		std::cout << "ERROR: Reader '" << name << "' was not "
 				"registered.\n";
 	} else {
 		std::unique_ptr<Reader> reader(it->second());
-		reader->load(params);
+		reader->load(this, params);
 	} // end else
 } // end method
 
@@ -149,8 +141,8 @@ Session::runReader(const std::string &name, const Rsyn::Json &params) {
 
 bool
 Session::startService(const std::string &name, const Rsyn::Json &params, const bool dontErrorOut) {
-	auto it = sessionData->clsServiceInstanciationFunctions.find(name);
-	if (it == sessionData->clsServiceInstanciationFunctions.end()) {
+	auto it = data->clsServiceInstanciationFunctions.find(name);
+	if (it == data->clsServiceInstanciationFunctions.end()) {
 		if (!dontErrorOut) {
 			std::cout << "ERROR: Service '" << name << "' was not "
 					"registered.\n";
@@ -161,8 +153,8 @@ Session::startService(const std::string &name, const Rsyn::Json &params, const b
 		Service * service = getServiceInternal(name);
 		if (!service) {
 			service = it->second();
-			service->start(params);
-			sessionData->clsRunningServices[name] = service;
+			service->start(*this, params);
+			data->clsRunningServices[name] = service;
 
 			return true;
 		} else {

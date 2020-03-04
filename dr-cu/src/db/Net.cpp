@@ -70,13 +70,12 @@ void NetBase::printResult(ostream& os) const {
     os << std::endl;
 }
 
-Net::Net(int i, Rsyn::Net net, RsynService& rsynService) {
+Net::Net(int i, Rsyn::Net net, RsynService& rsynService, Rsyn::Session& session) {
     idx = i;
     rsynNet = net;
 
     // pins
     pinAccessBoxes.reserve(net.getNumPins());
-    const Rsyn::Session session;
     const Rsyn::PhysicalDesign& physicalDesign = static_cast<Rsyn::PhysicalService*>(session.getService("rsyn.physical"))->getPhysicalDesign();
     const DBU libDBU = physicalDesign.getDatabaseUnits(Rsyn::LIBRARY_DBU);
     for (auto RsynPin : net.allPins()) {
@@ -179,7 +178,7 @@ void Net::getPinAccessBoxes(Rsyn::PhysicalLibraryPin phLibPin,
     }
 }
 
-void NetList::init(Database const& database, RsynService& rsynService) {
+void NetList::init(Database const& database, RsynService& rsynService, Rsyn::Session& session) {
     if (database.setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {
         log() << "Init NetList ..." << std::endl;
     }
@@ -195,7 +194,7 @@ void NetList::init(Database const& database, RsynService& rsynService) {
             default:
                 break;
         }
-        nets.emplace_back(nets.size(), net, rsynService);
+        nets.emplace_back(nets.size(), net, rsynService, session);
         numPins += nets.back().pinAccessBoxes.size();
     }
     if (database.setting().dbVerbose >= +db::VerboseLevelT::MIDDLE) {

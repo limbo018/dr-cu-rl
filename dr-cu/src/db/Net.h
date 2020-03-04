@@ -41,7 +41,7 @@ public:
 
 class Net : public NetBase {
 public:
-    Net(int i, Rsyn::Net net, RsynService& rsynService);
+    Net(int i, Rsyn::Net net, RsynService& rsynService, Rsyn::Session& session);
 
     // more route guide information
     vector<int> routeGuideVios;
@@ -69,7 +69,7 @@ class NetList {
 public:
     vector<Net> nets;
 
-    void init(Database const& database, RsynService& rsynService);
+    void init(Database const& database, RsynService& rsynService, Rsyn::Session& session);
     void writeNetTopo(Database const& database, const std::string& filename);
 };
 

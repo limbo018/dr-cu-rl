@@ -33,7 +33,7 @@ class Session;
 
 class Reader : public PopulateRsyn {
 public:
-	virtual bool load(const Rsyn::Json &params) = 0;
+	virtual bool load(Rsyn::Session* sess, const Rsyn::Json &params) = 0;
 }; // end class
 
 } // end namespace
